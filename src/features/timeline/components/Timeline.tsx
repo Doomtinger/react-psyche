@@ -9,6 +9,7 @@ import { emotionColor } from "@/shared/constants/emotions";
 import {
   dayRangeToFilter,
   formatTime,
+  lastDaysRange,
   localDayKey,
   toDateInputValue,
 } from "@/shared/utils/date";
@@ -32,6 +33,10 @@ export function Timeline() {
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionTag[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [preset, setPreset] = useState<"all" | "7d" | "30d" | "90d" | "custom">(
+    "all"
+  );
+  const [query, setQuery] = useState("");
 
   const [dialog, setDialog] = useState<DialogState>({
     open: false,
@@ -56,13 +61,26 @@ export function Timeline() {
     const wanted = selectedEmotions.length
       ? new Set(selectedEmotions)
       : null;
-    return records.filter(
-      (r) =>
-        (!fromIso || r.recordedAt >= fromIso) &&
-        (!toIso || r.recordedAt < toIso) &&
-        (!wanted || r.emotions.some((e) => wanted.has(e)))
-    );
-  }, [records, from, to, selectedEmotions]);
+    const q = query.trim().toLowerCase();
+    return records.filter((r) => {
+      if (fromIso && r.recordedAt < fromIso) return false;
+      if (toIso && r.recordedAt >= toIso) return false;
+      if (wanted && !r.emotions.some((e) => wanted.has(e))) return false;
+      if (q) {
+        const haystack = [
+          r.note ?? "",
+          ...r.eventTags,
+          ...r.emotions.map(
+            (e) => EMOTION_OPTIONS.find((o) => o.value === e)?.label ?? e
+          ),
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [records, from, to, selectedEmotions, query]);
 
   const groups = useMemo(() => {
     const map = new Map<string, MoodRecord[]>();
@@ -87,10 +105,31 @@ export function Timeline() {
     );
   }
 
+  function applyPreset(next: "all" | "7d" | "30d" | "90d") {
+    setPreset(next);
+    if (next === "all") {
+      setFrom("");
+      setTo("");
+      return;
+    }
+    const days = next === "7d" ? 7 : next === "30d" ? 30 : 90;
+    const range = lastDaysRange(days);
+    setFrom(toDateInputValue(new Date(range.from)));
+    setTo(toDateInputValue(new Date(range.to)));
+  }
+
+  function handleCustomDate(which: "from" | "to", value: string) {
+    if (which === "from") setFrom(value);
+    else setTo(value);
+    setPreset("custom");
+  }
+
   function clearFilters() {
     setSelectedEmotions([]);
     setFrom("");
     setTo("");
+    setPreset("all");
+    setQuery("");
   }
 
   async function confirmDelete() {
@@ -107,7 +146,8 @@ export function Timeline() {
     }
   }
 
-  const hasFilters = selectedEmotions.length > 0 || from || to;
+  const hasFilters =
+    selectedEmotions.length > 0 || from || to || query.trim().length > 0;
   const emotionLabel = (tag: EmotionTag) =>
     EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
 
@@ -128,6 +168,42 @@ export function Timeline() {
       </header>
 
       <div className="timeline-filters">
+        <div className="timeline-quick">
+          <div className="search-field">
+            <span className="search-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <input
+              type="search"
+              className="text-input search-input"
+              placeholder="搜索笔记、事件标签或情绪…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="搜索记录"
+            />
+          </div>
+          <div className="preset-group" role="group" aria-label="快捷时间范围">
+            {(
+              [
+                ["all", "全部"],
+                ["7d", "近一周"],
+                ["30d", "近一月"],
+                ["90d", "近三月"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={preset === key ? "btn btn-primary sm" : "btn btn-ghost sm"}
+                aria-pressed={preset === key}
+                onClick={() => applyPreset(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="filter-group" role="group" aria-label="情绪筛选">
           {EMOTION_OPTIONS.map((opt) => {
             const active = selectedEmotions.includes(opt.value);
@@ -159,7 +235,7 @@ export function Timeline() {
             className="text-input sm"
             value={from}
             max={to || toDateInputValue()}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(e) => handleCustomDate("from", e.target.value)}
           />
           <label className="field-label" htmlFor="tl-to">
             到
@@ -171,7 +247,7 @@ export function Timeline() {
             value={to}
             min={from || undefined}
             max={toDateInputValue()}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(e) => handleCustomDate("to", e.target.value)}
           />
         </div>
         {hasFilters ? (

@@ -3,6 +3,8 @@ import { EMOTION_OPTIONS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
 import type { AtlasNode } from "../types";
 
+export type { AtlasNode } from "../types";
+
 /**
  * Map records to 3D scene nodes.
  *
@@ -44,6 +46,7 @@ export function recordToAtlasNode(records: MoodRecord[]): AtlasNode[] {
       color: emotionColor(primary),
       label,
       recordedAt: record.recordedAt,
+      emotions: record.emotions,
     };
   });
 }

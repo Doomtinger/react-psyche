@@ -7,6 +7,7 @@ import { cn } from "@/shared/utils/cn";
 const NAV_ITEMS = [
   { href: "/", label: "首页", icon: "⌂" },
   { href: "/atlas", label: "Mind Atlas", icon: "◍" },
+  { href: "/atlas/landscape", label: "心理景观", icon: "✦" },
   { href: "/timeline", label: "时间线", icon: "☰" },
   { href: "/review", label: "周期回顾", icon: "◷" },
   { href: "/settings", label: "设置", icon: "⚙" },
