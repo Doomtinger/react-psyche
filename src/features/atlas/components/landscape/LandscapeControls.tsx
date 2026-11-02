@@ -23,6 +23,11 @@ interface LandscapeControlsProps {
 }
 
 const MODES: { key: LandscapeMode; label: string; hint: string }[] = [
+  {
+    key: "resonance",
+    label: "时序共振流",
+    hint: "时序心理共振流图：多股内心子波随时间的共振、拉扯与修复",
+  },
   { key: "fluid", label: "流体心理场", hint: "情绪强度与波动化为流动曲面" },
   { key: "terrain", label: "心理地形", hint: "强度起伏形成空间地形" },
   { key: "starmap", label: "意识星图", hint: "记录为节点，重复模式成簇" },

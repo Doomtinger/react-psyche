@@ -1,1 +1,1 @@
-export type LandscapeMode = "fluid" | "terrain" | "starmap";
+export type LandscapeMode = "resonance" | "fluid" | "terrain" | "starmap";

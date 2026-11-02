@@ -719,6 +719,92 @@ textarea.text-input {
   padding-left: 10px;
 }
 
+/* ---------- Resonance flow (时序心理共振流图) ---------- */
+.resonance-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.resonance-canvas {
+  display: flex;
+  flex-direction: column;
+}
+.resonance-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+.resonance-svg.dragging {
+  cursor: grabbing;
+}
+.res-hit {
+  cursor: pointer;
+}
+.resonance-playback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.resonance-playback .landscape-slider {
+  flex: 1;
+}
+.resonance-play-btn {
+  white-space: nowrap;
+}
+.resonance-legend {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.resonance-legend .lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.res-legend-text {
+  color: var(--text-faint);
+}
+.resonance-slice-info {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.res-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: res-pulse 2.2s ease-out infinite;
+}
+@keyframes res-pulse {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+.res-static .res-pulse {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .res-pulse {
+    animation: none;
+  }
+}
+
 /* ---------- Review ---------- */
 .review-content {
   display: flex;

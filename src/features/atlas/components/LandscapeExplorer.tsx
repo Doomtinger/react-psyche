@@ -9,7 +9,8 @@ import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { Spinner } from "@/shared/components/Spinner";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { AtlasFallback } from "./AtlasFallback";
-import { RecordDetail } from "@/features/records/components/RecordDetail";
+import { DetailAside } from "./DetailAside";
+import { ResonanceFlowView } from "./resonance/ResonanceFlowView";
 import { recordToAtlasNode } from "../adapters/recordToAtlasNode";
 import { deriveVisualState } from "../visualState";
 import { mapToVisualParameters } from "../visualParams";
@@ -126,6 +127,7 @@ export function LandscapeExplorer() {
   const lowCoverage =
     visualState.recordCount > 0 && visualState.dataCoverage < LOW_COVERAGE;
   const emptyVisible = visualState.recordCount === 0 && records.length > 0;
+  const isResonance = mode === "resonance";
 
   return (
     <div className="atlas-page landscape-page">
@@ -138,85 +140,81 @@ export function LandscapeExplorer() {
         </div>
       </header>
 
-      <LandscapeControls
-        mode={mode}
-        onModeChange={setMode}
-        rangePreset={rangePreset}
-        onRangeChange={handleRangeChange}
-        playhead={playhead}
-        onPlayheadChange={setPlayhead}
-        highlightEmotion={highlightEmotion}
-        onHighlightChange={setHighlightEmotion}
-        reducedMotion={reducedMotion}
-        onReducedMotionChange={setForceStatic}
-        onResetView={resetView}
-      />
+      {isResonance ? (
+        <ResonanceFlowView
+          records={records}
+          loading={loading}
+          error={error}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onLocate={locate}
+        />
+      ) : (
+        <>
+          <LandscapeControls
+            mode={mode}
+            onModeChange={setMode}
+            rangePreset={rangePreset}
+            onRangeChange={handleRangeChange}
+            playhead={playhead}
+            onPlayheadChange={setPlayhead}
+            highlightEmotion={highlightEmotion}
+            onHighlightChange={setHighlightEmotion}
+            reducedMotion={reducedMotion}
+            onReducedMotionChange={setForceStatic}
+            onResetView={resetView}
+          />
 
-      <div className="atlas-body">
-        <div className="atlas-canvas">
-          {loading ? (
-            <Spinner label="正在加载记录…" />
-          ) : error ? (
-            <AtlasFallback
-              title="无法读取本地记录"
-              message="请检查浏览器本地存储设置，或尝试刷新页面。"
-            />
-          ) : showFallback ? (
-            <AtlasFallback
-              title="3D 场景暂不可用"
-              message="当前环境不支持 WebGL，或场景初始化失败。你仍然可以通过时间线查看和管理记录。"
-            />
-          ) : records.length === 0 ? (
-            <AtlasFallback
-              title="还没有记录"
-              message="创建第一条状态记录后，它就会在这个动态景观中浮现。"
-            />
-          ) : (
-            <ErrorBoundary
-              resetKey={resetKey}
-              onError={() => setSceneFailed(true)}
-              fallback={
+          <div className="atlas-body">
+            <div className="atlas-canvas">
+              {loading ? (
+                <Spinner label="正在加载记录…" />
+              ) : error ? (
                 <AtlasFallback
-                  title="3D 场景初始化失败"
-                  message="场景遇到了问题。你可以继续使用时间线管理记录。"
+                  title="无法读取本地记录"
+                  message="请检查浏览器本地存储设置，或尝试刷新页面。"
                 />
-              }
-            >
-              <LandscapeScene
-                mode={mode}
-                nodes={nodes}
-                visualParams={visualParams}
-                clusters={visualState.clusters}
-                reducedMotion={reducedMotion}
-                selectedId={selectedId}
-                highlightEmotion={highlightEmotion}
-                onSelect={setSelectedId}
-                resetKey={resetKey}
-              />
-            </ErrorBoundary>
-          )}
-        </div>
+              ) : showFallback ? (
+                <AtlasFallback
+                  title="3D 场景暂不可用"
+                  message="当前环境不支持 WebGL，或场景初始化失败。你仍然可以通过时间线查看和管理记录。"
+                />
+              ) : records.length === 0 ? (
+                <AtlasFallback
+                  title="还没有记录"
+                  message="创建第一条状态记录后，它就会在这个动态景观中浮现。"
+                />
+              ) : (
+                <ErrorBoundary
+                  resetKey={resetKey}
+                  onError={() => setSceneFailed(true)}
+                  fallback={
+                    <AtlasFallback
+                      title="3D 场景初始化失败"
+                      message="场景遇到了问题。你可以继续使用时间线管理记录。"
+                    />
+                  }
+                >
+                  <LandscapeScene
+                    mode={mode}
+                    nodes={nodes}
+                    visualParams={visualParams}
+                    clusters={visualState.clusters}
+                    reducedMotion={reducedMotion}
+                    selectedId={selectedId}
+                    highlightEmotion={highlightEmotion}
+                    onSelect={setSelectedId}
+                    resetKey={resetKey}
+                  />
+                </ErrorBoundary>
+              )}
+            </div>
 
-        <aside className="atlas-detail" aria-label="记录详情">
-          {selectedRecord ? (
-            <>
-              <RecordDetail
-                record={selectedRecord}
-                deleting={false}
-                onLocate={locate}
-                onEdit={undefined}
-                onDelete={undefined}
-              />
-              <button
-                type="button"
-                className="btn btn-ghost sm"
-                onClick={() => setSelectedId(null)}
-              >
-                关闭详情
-              </button>
-            </>
-          ) : (
-            <div className="landscape-hint">
+            <DetailAside
+              selectedRecord={selectedRecord}
+              onClose={() => setSelectedId(null)}
+              onLocate={locate}
+            >
               <p className="muted">
                 点击场景中的光点查看对应的真实记录。拖动时间轴可以观察状态随时间的演变。
               </p>
@@ -230,10 +228,10 @@ export function LandscapeExplorer() {
                   把时间轴拖到最右，记录会在场景中逐渐浮现。
                 </p>
               ) : null}
-            </div>
-          )}
-        </aside>
-      </div>
+            </DetailAside>
+          </div>
+        </>
+      )}
     </div>
   );
 }
