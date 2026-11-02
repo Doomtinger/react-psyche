@@ -9,6 +9,8 @@ interface DetailAsideProps {
   onLocate?: (view: "atlas" | "timeline", recordId: string) => void;
   /** Hint content shown while no record is selected. */
   children: React.ReactNode;
+  /** Optional legend/footer rendered at the bottom of the panel (e.g. resonance). */
+  legend?: React.ReactNode;
 }
 
 /**
@@ -20,6 +22,7 @@ export function DetailAside({
   onClose,
   onLocate,
   children,
+  legend,
 }: DetailAsideProps) {
   return (
     <aside className="atlas-detail" aria-label="记录详情">
@@ -43,6 +46,7 @@ export function DetailAside({
       ) : (
         <div className="landscape-hint">{children}</div>
       )}
+      {legend}
     </aside>
   );
 }

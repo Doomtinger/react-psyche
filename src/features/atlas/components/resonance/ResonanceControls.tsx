@@ -27,6 +27,8 @@ interface ResonanceControlsProps {
   onWatermarkChange: (value: boolean) => void;
   onExport: () => void;
   exporting: boolean;
+  /** Switch back to the 3D visualization modes (out of the resonance view). */
+  onExitToVisualization: () => void;
 }
 
 const SPEEDS = [0.5, 1, 2] as const;
@@ -58,6 +60,7 @@ export function ResonanceControls({
   onWatermarkChange,
   onExport,
   exporting,
+  onExitToVisualization,
 }: ResonanceControlsProps) {
   return (
     <div className="landscape-controls">
@@ -206,6 +209,14 @@ export function ResonanceControls({
       </div>
 
       <div className="landscape-control-block landscape-control-actions">
+        <button
+          type="button"
+          className="btn btn-ghost sm"
+          title="返回 3D 心理景观可视化"
+          onClick={onExitToVisualization}
+        >
+          ← 返回可视化
+        </button>
         <label className="settings-toggle" title="降低或关闭动态效果">
           <input
             type="checkbox"

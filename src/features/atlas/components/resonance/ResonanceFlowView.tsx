@@ -33,6 +33,8 @@ interface ResonanceFlowViewProps {
   selectedId: string | null;
   onSelect: (recordId: string | null) => void;
   onLocate: (view: "atlas" | "timeline", recordId: string) => void;
+  /** Switch back to the 3D visualization modes. */
+  onExitToVisualization: () => void;
 }
 
 /** Full playback traversal duration at 1x. */
@@ -69,6 +71,7 @@ export function ResonanceFlowView({
   selectedId,
   onSelect,
   onLocate,
+  onExitToVisualization,
 }: ResonanceFlowViewProps) {
   const osReduced = useReducedMotion();
   const [forceStatic, setForceStatic] = useState(false);
@@ -321,6 +324,7 @@ export function ResonanceFlowView({
         onWatermarkChange={setWatermark}
         onExport={() => void exportPng()}
         exporting={exporting}
+        onExitToVisualization={onExitToVisualization}
       />
 
       <div className="atlas-body">
@@ -368,6 +372,39 @@ export function ResonanceFlowView({
           selectedRecord={selectedRecord}
           onClose={() => onSelect(null)}
           onLocate={onLocate}
+          legend={
+            chartReady ? (
+              <div className="resonance-legend">
+                <span className="lg">
+                  <svg width="18" height="12" aria-hidden="true">
+                    <circle cx="9" cy="6" r="3" fill="#4cc38a" />
+                  </svg>
+                  正向事件涟漪
+                </span>
+                <span className="lg">
+                  <svg width="18" height="12" aria-hidden="true">
+                    <path d="M3 1 L15 1 L9 11 Z" fill="none" stroke="#e0586b" strokeWidth="1.4" />
+                  </svg>
+                  负向冲击漩涡
+                </span>
+                <span className="lg">
+                  <svg width="18" height="12" aria-hidden="true">
+                    <circle cx="9" cy="6" r="2" fill="#6c788f" />
+                  </svg>
+                  弱扰动
+                </span>
+                <span className="lg res-legend-text">
+                  顺滑缠绕＝共振自洽 · 反向交叉＝失谐拉扯 · 空白断层＝情感隔离 · 骤然增幅＝延迟爆发
+                </span>
+                <span className="lg res-legend-text">
+                  长时间无记录的区间，波纹会自动淡化（缺失不代表平静）
+                </span>
+                {selectedSliceInfo ? (
+                  <span className="lg resonance-slice-info">{selectedSliceInfo}</span>
+                ) : null}
+              </div>
+            ) : null
+          }
         >
           <p className="muted">
             点击图上的事件标记或波纹切片，查看当时写下的原始记录。滚轮缩放、拖拽平移时间轴；播放可回看心理状态如何随时间生长。
@@ -387,38 +424,6 @@ export function ResonanceFlowView({
           ) : null}
         </DetailAside>
       </div>
-
-      {chartReady ? (
-        <div className="resonance-legend">
-          <span className="lg">
-            <svg width="18" height="12" aria-hidden="true">
-              <circle cx="9" cy="6" r="3" fill="#4cc38a" />
-            </svg>
-            正向事件涟漪
-          </span>
-          <span className="lg">
-            <svg width="18" height="12" aria-hidden="true">
-              <path d="M3 1 L15 1 L9 11 Z" fill="none" stroke="#e0586b" strokeWidth="1.4" />
-            </svg>
-            负向冲击漩涡
-          </span>
-          <span className="lg">
-            <svg width="18" height="12" aria-hidden="true">
-              <circle cx="9" cy="6" r="2" fill="#6c788f" />
-            </svg>
-            弱扰动
-          </span>
-          <span className="lg res-legend-text">
-            顺滑缠绕＝共振自洽 · 反向交叉＝失谐拉扯 · 空白断层＝情感隔离 · 骤然增幅＝延迟爆发
-          </span>
-          <span className="lg res-legend-text">
-            长时间无记录的区间，波纹会自动淡化（缺失不代表平静）
-          </span>
-          {selectedSliceInfo ? (
-            <span className="lg resonance-slice-info">{selectedSliceInfo}</span>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

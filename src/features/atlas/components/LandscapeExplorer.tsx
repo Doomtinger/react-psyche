@@ -148,6 +148,7 @@ export function LandscapeExplorer() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onLocate={locate}
+          onExitToVisualization={() => setMode("fluid")}
         />
       ) : (
         <>
