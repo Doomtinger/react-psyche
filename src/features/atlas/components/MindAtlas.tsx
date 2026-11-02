@@ -29,6 +29,7 @@ export function MindAtlas() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [sceneFailed, setSceneFailed] = useState(false);
 
@@ -51,6 +52,13 @@ export function MindAtlas() {
     () => records.find((r) => r.id === selectedId) ?? null,
     [records, selectedId]
   );
+
+  const detailVisible = Boolean(selectedRecord) && !collapsed;
+
+  function handleSelect(id: string | null) {
+    setSelectedId(id);
+    setCollapsed(false);
+  }
 
   function applyPreset(next: Preset) {
     setPreset(next);
@@ -146,7 +154,7 @@ export function MindAtlas() {
         </div>
       </div>
 
-      <div className="atlas-body">
+      <div className={`atlas-body${detailVisible ? "" : " no-detail"}`}>
         <div className="atlas-canvas">
           {loading || detecting ? (
             <Spinner label={detecting ? "正在检测 3D 支持…" : "正在加载记录…"} />
@@ -184,15 +192,26 @@ export function MindAtlas() {
               <AtlasScene
                 nodes={nodes}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={handleSelect}
                 reducedMotion={reducedMotion}
                 resetKey={resetKey}
               />
             </ErrorBoundary>
           )}
+
+          {collapsed && selectedRecord ? (
+            <button
+              type="button"
+              className="atlas-detail-toggle"
+              onClick={() => setCollapsed(false)}
+              title="展开记录详情"
+            >
+              展开详情 ›
+            </button>
+          ) : null}
         </div>
 
-        {selectedRecord ? (
+        {detailVisible ? (
           <aside className="atlas-detail" aria-label="记录详情">
             <RecordDetail
               record={selectedRecord}
@@ -201,13 +220,25 @@ export function MindAtlas() {
               onEdit={undefined}
               onDelete={undefined}
             />
-            <button
-              type="button"
-              className="btn btn-ghost sm"
-              onClick={() => setSelectedId(null)}
-            >
-              关闭详情
-            </button>
+            <div className="atlas-detail-actions">
+              <button
+                type="button"
+                className="btn btn-ghost sm"
+                onClick={() => setCollapsed(true)}
+              >
+                收起
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost sm"
+                onClick={() => {
+                  setSelectedId(null);
+                  setCollapsed(false);
+                }}
+              >
+                关闭详情
+              </button>
+            </div>
           </aside>
         ) : null}
       </div>
