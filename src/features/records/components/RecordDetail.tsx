@@ -1,9 +1,9 @@
 "use client";
 
-import { EMOTION_OPTIONS, INTENSITY_LABELS } from "@/features/records/types";
-import { emotionColor } from "@/shared/constants/emotions";
+import { INTENSITY_LABELS } from "@/features/records/types";
 import { formatDateTime } from "@/shared/utils/date";
-import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
+import type { MoodRecord } from "@/domain/entities/MoodRecord";
+import { EmotionBadges } from "./EmotionBadges";
 
 interface RecordDetailProps {
   record: MoodRecord;
@@ -12,9 +12,6 @@ interface RecordDetailProps {
   onLocate?: (view: "atlas" | "timeline", recordId: string) => void;
   deleting?: boolean;
 }
-
-const emotionLabel = (tag: EmotionTag) =>
-  EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
 
 export function RecordDetail({
   record,
@@ -33,20 +30,7 @@ export function RecordDetail({
       </div>
 
       <div className="detail-emotions" aria-label="情绪标签">
-        {record.emotions.map((tag) => (
-          <span
-            key={tag}
-            className="emotion-badge"
-            style={{ borderColor: emotionColor(tag), color: emotionColor(tag) }}
-          >
-            <span
-              className="emotion-dot"
-              style={{ backgroundColor: emotionColor(tag) }}
-              aria-hidden="true"
-            />
-            {emotionLabel(tag)}
-          </span>
-        ))}
+        <EmotionBadges record={record} />
       </div>
 
       {record.note ? (

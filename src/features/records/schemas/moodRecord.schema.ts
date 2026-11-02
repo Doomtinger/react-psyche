@@ -16,6 +16,17 @@ export const intensitySchema = z
   .min(1, "强度最小为 1")
   .max(5, "强度最大为 5");
 
+export const customEmotionSchema = z.object({
+  key: z.string().min(1, "自定义标签缺少标识").max(64),
+  label: z
+    .string()
+    .min(1, "自定义标签名称不能为空")
+    .max(12, "自定义标签最长 12 个字"),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "自定义标签颜色必须是 #RRGGBB 格式"),
+});
+
 export const moodRecordDraftSchema = z.object({
   recordedAt: z
     .string()
@@ -29,6 +40,10 @@ export const moodRecordDraftSchema = z.object({
   eventTags: z
     .array(z.string().min(1).max(50))
     .max(30, "事件标签数量过多")
+    .optional(),
+  customEmotions: z
+    .array(customEmotionSchema)
+    .max(10, "自定义情绪标签数量过多")
     .optional(),
 });
 

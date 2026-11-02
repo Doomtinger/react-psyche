@@ -4,8 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
-import { EMOTION_OPTIONS, INTENSITY_LABELS } from "@/features/records/types";
-import { emotionColor } from "@/shared/constants/emotions";
+import { INTENSITY_LABELS } from "@/features/records/types";
 import {
   formatDate,
   formatTime,
@@ -13,6 +12,7 @@ import {
 } from "@/shared/utils/date";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { RecordDialog } from "@/features/records/components/RecordDialog";
+import { EmotionDots } from "@/features/records/components/EmotionBadges";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
 
 export default function HomePage() {
@@ -118,17 +118,7 @@ export default function HomePage() {
                   onClick={() => setFocusRecord(record)}
                 >
                   <span className="timeline-emotions">
-                    {record.emotions.map((tag) => (
-                      <span
-                        key={tag}
-                        className="emotion-dot"
-                        style={{ backgroundColor: emotionColor(tag) }}
-                        aria-label={
-                          EMOTION_OPTIONS.find((o) => o.value === tag)?.label ??
-                          tag
-                        }
-                      />
-                    ))}
+                    <EmotionDots record={record} />
                   </span>
                   <span className="home-recent-meta">
                     {formatDate(record.recordedAt)} {formatTime(record.recordedAt)} ·{" "}

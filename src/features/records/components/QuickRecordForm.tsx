@@ -5,11 +5,16 @@ import {
   EMOTION_OPTIONS,
   INTENSITY_LABELS,
 } from "@/features/records/types";
-import { emotionColor } from "@/shared/constants/emotions";
+import {
+  MAX_CUSTOM_EMOTIONS,
+  makeCustomEmotionKey,
+} from "../customEmotions";
+import { emotionColor, EMOTION_COLORS } from "@/shared/constants/emotions";
 import { AppError } from "@/domain/repositories/AppError";
 import { toDateInputValue } from "@/shared/utils/date";
 import { cn } from "@/shared/utils/cn";
 import type {
+  CustomEmotion,
   EmotionTag,
   Intensity,
   MoodRecord,
@@ -53,6 +58,11 @@ export function QuickRecordForm({
   const [emotions, setEmotions] = useState<EmotionTag[]>(
     initial?.emotions ?? []
   );
+  const [customEmotions, setCustomEmotions] = useState<CustomEmotion[]>(
+    initial?.customEmotions ?? []
+  );
+  const [customInput, setCustomInput] = useState("");
+  const [customColor, setCustomColor] = useState(EMOTION_COLORS.other);
   const [intensity, setIntensity] = useState<Intensity>(
     initial?.intensity ?? 3
   );
@@ -66,12 +76,67 @@ export function QuickRecordForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const otherActive = emotions.includes("other");
+  const customFull = customEmotions.length >= MAX_CUSTOM_EMOTIONS;
+
   const canSubmit = useMemo(() => emotions.length > 0, [emotions]);
 
   function toggleEmotion(tag: EmotionTag) {
     setEmotions((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+    // Custom tags live under 其他: closing it discards them.
+    if (tag === "other" && otherActive) {
+      setCustomEmotions([]);
+    }
+  }
+
+  function addCustomEmotion() {
+    const label = customInput.trim();
+    if (!label || customFull) return;
+    if (customEmotions.some((c) => c.label === label)) {
+      setCustomInput("");
+      return;
+    }
+    setCustomEmotions((prev) => [
+      ...prev,
+      { key: makeCustomEmotionKey(), label, color: customColor },
+    ]);
+    if (!otherActive) setEmotions((prev) => [...prev, "other"]);
+    setCustomInput("");
+  }
+
+  /**
+   * Commit anything still pending in the composer (typed label + picked
+   * color that never went through 添加标签). Saving must never silently drop
+   * what the user typed — this is the safety net for direct 保存 clicks.
+   */
+  function commitPendingCustom(): {
+    customs: CustomEmotion[];
+    emotions: EmotionTag[];
+  } {
+    const label = customInput.trim();
+    const canAdd =
+      label &&
+      customEmotions.length < MAX_CUSTOM_EMOTIONS &&
+      !customEmotions.some((c) => c.label === label);
+    if (!canAdd) return { customs: customEmotions, emotions };
+    return {
+      customs: [
+        ...customEmotions,
+        { key: makeCustomEmotionKey(), label, color: customColor },
+      ],
+      emotions: emotions.includes("other") ? emotions : [...emotions, "other"],
+    };
+  }
+
+  function removeCustomEmotion(key: string) {
+    const next = customEmotions.filter((c) => c.key !== key);
+    setCustomEmotions(next);
+    // Last custom tag removed → drop the auto-added 其他 tag as well.
+    if (next.length === 0) {
+      setEmotions((prev) => prev.filter((t) => t !== "other"));
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -87,12 +152,20 @@ export function QuickRecordForm({
       ? undefined
       : combined.toISOString();
 
+    // Auto-commit pending composer input so a direct 保存 click cannot lose it.
+    const committed = commitPendingCustom();
+    setCustomEmotions(committed.customs);
+    setEmotions(committed.emotions);
+    setCustomInput("");
+
     const draft: MoodRecordDraft = {
       recordedAt,
-      emotions,
+      emotions: committed.emotions,
       intensity,
       note: note.trim() || undefined,
       eventTags: parseEventTags(eventTagsInput),
+      customEmotions:
+        committed.customs.length > 0 ? committed.customs : undefined,
     };
 
     setSubmitting(true);
@@ -142,6 +215,70 @@ export function QuickRecordForm({
             );
           })}
         </div>
+
+        {otherActive ? (
+          <div className="custom-emotion-composer">
+            <input
+              type="text"
+              className="text-input sm custom-emotion-input"
+              value={customInput}
+              maxLength={12}
+              placeholder="输入自定义标签（最多 12 字）"
+              aria-label="自定义情绪标签名称"
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); // keep Enter from submitting the form
+                  addCustomEmotion();
+                }
+              }}
+            />
+            <input
+              type="color"
+              className="color-picker"
+              value={customColor}
+              aria-label="选择标签颜色"
+              title="选择标签颜色"
+              onChange={(e) => setCustomColor(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-secondary sm"
+              onClick={addCustomEmotion}
+              disabled={!customInput.trim() || customFull}
+            >
+              添加标签
+            </button>
+          </div>
+        ) : null}
+
+        {customEmotions.length > 0 ? (
+          <div className="custom-emotion-list" role="list" aria-label="自定义情绪标签">
+            {customEmotions.map((custom) => (
+              <span
+                key={custom.key}
+                role="listitem"
+                className="custom-emotion-chip"
+                style={{ borderColor: custom.color, color: custom.color }}
+              >
+                <span
+                  className="emotion-dot"
+                  style={{ backgroundColor: custom.color }}
+                  aria-hidden="true"
+                />
+                {custom.label}
+                <button
+                  type="button"
+                  className="custom-emotion-remove"
+                  aria-label={`删除标签 ${custom.label}`}
+                  onClick={() => removeCustomEmotion(custom.key)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset className="field">

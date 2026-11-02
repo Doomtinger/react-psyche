@@ -57,7 +57,10 @@ export function mapToVisualParameters(
     ? 0
     : clamp01(state.dataCoverage * Math.min(1, maxClusterStrength / 4));
 
-  const { a, b } = dominantColors(state.emotionDistribution);
+  const { a, b } = dominantColors(
+    state.emotionDistribution,
+    state.customColors
+  );
 
   return {
     waveAmplitude,

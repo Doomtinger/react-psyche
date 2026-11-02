@@ -1,5 +1,6 @@
 import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
 import { localDayKey } from "@/shared/utils/date";
+import { displayEmotions } from "@/features/records/customEmotions";
 
 export interface VisualCluster {
   id: string;
@@ -12,7 +13,13 @@ export interface VisualState {
   period: { start: string; end: string };
   /** Fraction of days in the period that have at least one record (0..1). */
   dataCoverage: number;
+  /**
+   * Emotion counts keyed by built-in tag or custom-tag key. Custom keys must
+   * be resolved through `customColors`, not `emotionColor`.
+   */
   emotionDistribution: Record<string, number>;
+  /** Custom-tag key → the color the user picked in the record form. */
+  customColors: Record<string, string>;
   averageIntensity: number | null;
   intensityVariance: number | null;
   /** Normalized 0..1: records per day relative to a reference density. */
@@ -43,13 +50,17 @@ export function deriveVisualState(
   const daysInRange = Math.max(1, Math.ceil((endMs - startMs) / DAY_MS));
 
   const distribution: Record<string, number> = {};
+  const customColors: Record<string, string> = {};
   const intensities: number[] = [];
   const daysWithRecords = new Set<string>();
   const byPrimaryEmotion = new Map<EmotionTag, string[]>();
 
   for (const record of records) {
-    for (const emotion of record.emotions) {
-      distribution[emotion] = (distribution[emotion] ?? 0) + 1;
+    // Count on the display layer so custom tags (其他 + user label/color)
+    // appear with their own identity instead of collapsing into 其他.
+    for (const emo of displayEmotions(record)) {
+      distribution[emo.key] = (distribution[emo.key] ?? 0) + 1;
+      if (emo.isCustom) customColors[emo.key] = emo.color;
     }
     intensities.push(record.intensity);
     daysWithRecords.add(localDayKey(record.recordedAt));
@@ -92,6 +103,7 @@ export function deriveVisualState(
     period: { start: range.start, end: range.end },
     dataCoverage,
     emotionDistribution: distribution,
+    customColors,
     averageIntensity,
     intensityVariance,
     recordDensity,

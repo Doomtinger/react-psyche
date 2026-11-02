@@ -44,14 +44,15 @@ export function StarMap({
     return clusters
       .filter((c) => c.recordIds.length >= 2)
       .map((cluster) => {
-        const points = cluster.recordIds
+        const clusterNodes = cluster.recordIds
           .map((id) => byId.get(id))
-          .filter((n): n is AtlasNode => Boolean(n))
-          .map((n) => toTuple(n.position));
+          .filter((n): n is AtlasNode => Boolean(n));
         return {
           id: cluster.id,
-          color: emotionColor(cluster.emotion),
-          points,
+          // Node colors are already custom-emotion aware; the built-in color
+          // is only a fallback for clusters whose nodes are all missing.
+          color: clusterNodes[0]?.color ?? emotionColor(cluster.emotion),
+          points: clusterNodes.map((n) => toTuple(n.position)),
           opacity: 0.25 + clusterVisibility * 0.5,
         };
       })

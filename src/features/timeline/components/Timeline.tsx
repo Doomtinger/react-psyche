@@ -17,6 +17,7 @@ import { cn } from "@/shared/utils/cn";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { RecordDialog } from "@/features/records/components/RecordDialog";
+import { EmotionDots } from "@/features/records/components/EmotionBadges";
 import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
 
 type DialogState = {
@@ -73,6 +74,7 @@ export function Timeline() {
           ...r.emotions.map(
             (e) => EMOTION_OPTIONS.find((o) => o.value === e)?.label ?? e
           ),
+          ...(r.customEmotions ?? []).map((c) => c.label),
         ]
           .join(" ")
           .toLowerCase();
@@ -148,8 +150,6 @@ export function Timeline() {
 
   const hasFilters =
     selectedEmotions.length > 0 || from || to || query.trim().length > 0;
-  const emotionLabel = (tag: EmotionTag) =>
-    EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
 
   return (
     <div className="timeline-page">
@@ -311,15 +311,7 @@ export function Timeline() {
                         {formatTime(record.recordedAt)}
                       </span>
                       <span className="timeline-emotions">
-                        {record.emotions.map((tag) => (
-                          <span
-                            key={tag}
-                            className="emotion-dot"
-                            style={{ backgroundColor: emotionColor(tag) }}
-                            title={emotionLabel(tag)}
-                            aria-label={emotionLabel(tag)}
-                          />
-                        ))}
+                        <EmotionDots record={record} />
                       </span>
                       <span className="timeline-intensity">
                         强度 {record.intensity} · {INTENSITY_LABELS[record.intensity]}

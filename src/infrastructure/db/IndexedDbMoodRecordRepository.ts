@@ -43,6 +43,7 @@ export class IndexedDbMoodRecordRepository implements MoodRecordRepository {
       intensity: valid.intensity,
       note: valid.note,
       eventTags: valid.eventTags ?? [],
+      customEmotions: valid.customEmotions,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -121,6 +122,10 @@ export class IndexedDbMoodRecordRepository implements MoodRecordRepository {
         note: "note" in patch ? patch.note : existing.note,
         eventTags:
           "eventTags" in patch ? (patch.eventTags ?? []) : existing.eventTags,
+        customEmotions:
+          "customEmotions" in patch
+            ? (patch.customEmotions ?? undefined)
+            : existing.customEmotions,
         recordedAt:
           "recordedAt" in patch && patch.recordedAt
             ? patch.recordedAt

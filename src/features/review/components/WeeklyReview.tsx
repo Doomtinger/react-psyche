@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { container } from "@/application/container";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
-import { EMOTION_OPTIONS, INTENSITY_LABELS } from "@/features/records/types";
-import { emotionColor } from "@/shared/constants/emotions";
+import { INTENSITY_LABELS } from "@/features/records/types";
+import { displayEmotions } from "@/features/records/customEmotions";
 import {
   lastDaysRange,
   thisMonthRange,
@@ -14,6 +14,7 @@ import {
 } from "@/shared/utils/date";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { RecordDialog } from "@/features/records/components/RecordDialog";
+import { EmotionDots } from "@/features/records/components/EmotionBadges";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
 import type { PeriodSummary } from "@/application/ReviewService";
 
@@ -79,9 +80,21 @@ export function WeeklyReview() {
     return records.filter((r) => ids.has(r.id));
   }, [summary, records]);
 
-  const maxEmotion = summary
-    ? Math.max(1, ...Object.values(summary.emotionCounts))
-    : 1;
+  // Distribution on the display layer: custom tags (其他 + user label/color)
+  // get their own row instead of collapsing into the generic 其他 bar.
+  const emotionDist = useMemo(() => {
+    const map = new Map<string, { label: string; color: string; count: number }>();
+    for (const record of summaryRecords) {
+      for (const emo of displayEmotions(record)) {
+        const entry = map.get(emo.key);
+        if (entry) entry.count += 1;
+        else map.set(emo.key, { label: emo.label, color: emo.color, count: 1 });
+      }
+    }
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
+  }, [summaryRecords]);
+
+  const maxEmotion = Math.max(1, ...emotionDist.map(([, e]) => e.count));
 
   function openRecord(record: MoodRecord) {
     setDialogRecord(record);
@@ -176,23 +189,21 @@ export function WeeklyReview() {
           <section className="review-section">
             <h2 className="review-section-title">情绪标签分布</h2>
             <div className="emotion-bars">
-              {EMOTION_OPTIONS.map((opt) => {
-                const count = summary.emotionCounts[opt.value] ?? 0;
-                if (count === 0) return null;
-                const width = Math.round((count / maxEmotion) * 100);
+              {emotionDist.map(([key, entry]) => {
+                const width = Math.round((entry.count / maxEmotion) * 100);
                 return (
-                  <div key={opt.value} className="emotion-bar-row">
-                    <span className="emotion-bar-label">{opt.label}</span>
+                  <div key={key} className="emotion-bar-row">
+                    <span className="emotion-bar-label">{entry.label}</span>
                     <div className="emotion-bar-track">
                       <div
                         className="emotion-bar-fill"
                         style={{
                           width: `${width}%`,
-                          backgroundColor: emotionColor(opt.value),
+                          backgroundColor: entry.color,
                         }}
                       />
                     </div>
-                    <span className="emotion-bar-count">{count}</span>
+                    <span className="emotion-bar-count">{entry.count}</span>
                   </div>
                 );
               })}
@@ -212,17 +223,7 @@ export function WeeklyReview() {
                     onClick={() => openRecord(record)}
                   >
                     <span className="timeline-emotions">
-                      {record.emotions.map((tag) => (
-                        <span
-                          key={tag}
-                          className="emotion-dot"
-                          style={{ backgroundColor: emotionColor(tag) }}
-                          aria-label={
-                            EMOTION_OPTIONS.find((o) => o.value === tag)?.label ??
-                            tag
-                          }
-                        />
-                      ))}
+                      <EmotionDots record={record} />
                     </span>
                     <span className="review-record-meta">
                       {record.recordedAt.slice(0, 10)} · 强度 {record.intensity} ·{" "}

@@ -176,6 +176,18 @@ function extractEmotions(record: MoodRecord, note: string): EmoStrength[] {
 
   list.sort((a, b) => b.raw - a.raw);
 
+  // Custom tags (其他 with a user-written label/color) keep their picked
+  // color here, so resonance waves and the envelope match the rest of the UI.
+  const customs = record.customEmotions ?? [];
+  if (customs.length > 0) {
+    for (const emo of list) {
+      if (emo.tag === "other") {
+        emo.label = customs[0].label;
+        emo.color = customs[0].color;
+      }
+    }
+  }
+
   // Merge emotions beyond the sub-wave cap into the weakest kept wave, so the
   // picture stays legible instead of dropping feelings silently.
   if (list.length > MAX_SUB_WAVES) {

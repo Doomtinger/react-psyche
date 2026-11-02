@@ -43,6 +43,48 @@ describe("validateMoodRecordDraft", () => {
       })
     ).toThrow(AppError);
   });
+
+  it("accepts valid custom emotions", () => {
+    const result = validateMoodRecordDraft({
+      ...baseDraft,
+      emotions: ["other"],
+      customEmotions: [
+        { key: "custom:abc", label: "平静中的期待", color: "#8bd450" },
+      ],
+    });
+    expect(result.customEmotions?.[0]?.label).toBe("平静中的期待");
+  });
+
+  it("rejects custom emotions with a bad color format", () => {
+    expect(() =>
+      validateMoodRecordDraft({
+        ...baseDraft,
+        emotions: ["other"],
+        customEmotions: [
+          { key: "custom:abc", label: "标签", color: "8bd450" },
+        ],
+      })
+    ).toThrow(AppError);
+  });
+
+  it("rejects custom emotions with an empty or overlong label", () => {
+    expect(() =>
+      validateMoodRecordDraft({
+        ...baseDraft,
+        emotions: ["other"],
+        customEmotions: [{ key: "custom:abc", label: "", color: "#8bd450" }],
+      })
+    ).toThrow(AppError);
+    expect(() =>
+      validateMoodRecordDraft({
+        ...baseDraft,
+        emotions: ["other"],
+        customEmotions: [
+          { key: "custom:abc", label: "这个标签实在是太长了不合适", color: "#8bd450" },
+        ],
+      })
+    ).toThrow(AppError);
+  });
 });
 
 describe("validateMoodRecordPatch", () => {
