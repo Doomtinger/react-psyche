@@ -666,6 +666,20 @@ textarea.text-input {
   color: var(--text);
   border-color: var(--accent);
 }
+
+/* ---------- Quick date components ---------- */
+.antd-range-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+.quick-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
 .atlas-fallback {
   height: 100%;
   display: flex;

@@ -6,57 +6,43 @@ import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
 import { INTENSITY_LABELS } from "@/features/records/types";
 import { displayEmotions } from "@/features/records/customEmotions";
-import {
-  lastDaysRange,
-  thisMonthRange,
-  thisWeekRange,
-  toDateInputValue,
-} from "@/shared/utils/date";
+import { lastDaysRange } from "@/shared/utils/date";
 import { EmptyState } from "@/shared/components/EmptyState";
+import {
+  AntdRangePicker,
+  QUICK_RANGE_PRESETS,
+  resolveRangeISO,
+} from "@/shared/components/AntdRangePicker";
+import type { DateRange } from "@/shared/components/AntdRangePicker";
 import { RecordDialog } from "@/features/records/components/RecordDialog";
 import { EmotionDots } from "@/features/records/components/EmotionBadges";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
 import type { PeriodSummary } from "@/application/ReviewService";
 
-type Period = "week" | "month" | "7d" | "30d" | "custom";
-
-interface RangeState {
-  from: string;
-  to: string;
-}
-
-function rangeFor(p: Period, from: string, to: string): RangeState {
-  if (p === "week") return thisWeekRange();
-  if (p === "month") return thisMonthRange();
-  if (p === "7d") return lastDaysRange(7);
-  if (p === "30d") return lastDaysRange(30);
-  return {
-    from: from ? new Date(`${from}T00:00:00`).toISOString() : "",
-    to: to ? new Date(`${to}T23:59:59`).toISOString() : "",
-  };
-}
+const REVIEW_PRESETS = QUICK_RANGE_PRESETS;
 
 export function WeeklyReview() {
   const { records } = useRecords();
   const { notify } = useToast();
-  const [period, setPeriod] = useState<Period>("week");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [range, setRange] = useState<DateRange>(() => {
+    const r = lastDaysRange(7);
+    return { from: r.from.slice(0, 10), to: r.to.slice(0, 10) };
+  });
   const [summary, setSummary] = useState<PeriodSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [dialogRecord, setDialogRecord] = useState<MoodRecord | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    const range = rangeFor(period, from, to);
-    if (!range.from || !range.to) {
+    const r = resolveRangeISO(range);
+    if (!r.from || !r.to) {
       setSummary(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
     container.reviewService
-      .getPeriodSummary({ from: range.from, to: range.to })
+      .getPeriodSummary({ from: r.from, to: r.to })
       .then((result) => {
         if (!cancelled) setSummary(result);
       })
@@ -72,7 +58,7 @@ export function WeeklyReview() {
     return () => {
       cancelled = true;
     };
-  }, [period, from, to, notify]);
+  }, [range, notify]);
 
   const summaryRecords = useMemo(() => {
     if (!summary) return [];
@@ -113,51 +99,11 @@ export function WeeklyReview() {
       </header>
 
       <div className="review-controls">
-        <div className="preset-group" role="group" aria-label="周期选择">
-          {([
-            ["week", "本周"],
-            ["month", "本月"],
-            ["7d", "近 7 天"],
-            ["30d", "近 30 天"],
-            ["custom", "自定义"],
-          ] as [Period, string][]).map(([p, label]) => (
-            <button
-              key={p}
-              type="button"
-              className={period === p ? "btn btn-primary sm" : "btn btn-ghost sm"}
-              onClick={() => setPeriod(p)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {period === "custom" ? (
-          <div className="date-range">
-            <label className="field-label" htmlFor="rev-from">
-              从
-            </label>
-            <input
-              id="rev-from"
-              type="date"
-              className="text-input sm"
-              value={from}
-              max={to || toDateInputValue()}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-            <label className="field-label" htmlFor="rev-to">
-              到
-            </label>
-            <input
-              id="rev-to"
-              type="date"
-              className="text-input sm"
-              value={to}
-              min={from || undefined}
-              max={toDateInputValue()}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </div>
-        ) : null}
+        <AntdRangePicker
+          presets={REVIEW_PRESETS}
+          value={range}
+          onChange={setRange}
+        />
       </div>
 
       {loading ? (

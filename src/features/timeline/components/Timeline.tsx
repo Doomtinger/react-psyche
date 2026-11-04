@@ -1,24 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
 import { EMOTION_OPTIONS, INTENSITY_LABELS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
-import {
-  dayRangeToFilter,
-  formatTime,
-  lastDaysRange,
-  localDayKey,
-  toDateInputValue,
-} from "@/shared/utils/date";
+import { formatTime, localDayKey } from "@/shared/utils/date";
 import { cn } from "@/shared/utils/cn";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { RecordDialog } from "@/features/records/components/RecordDialog";
 import { EmotionDots } from "@/features/records/components/EmotionBadges";
+import {
+  AntdRangePicker,
+  QUICK_RANGE_PRESETS,
+  resolveRangeISO,
+} from "@/shared/components/AntdRangePicker";
+import type { DateRange } from "@/shared/components/AntdRangePicker";
 import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
+
+const TIMELINE_PRESETS = QUICK_RANGE_PRESETS;
 
 type DialogState = {
   open: boolean;
@@ -29,14 +31,19 @@ type DialogState = {
 export function Timeline() {
   const { records, loading, error, deleteRecord, reload } = useRecords();
   const { notify } = useToast();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
+  function handleBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  }
+
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionTag[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [preset, setPreset] = useState<"all" | "7d" | "30d" | "90d" | "custom">(
-    "all"
-  );
+  const [range, setRange] = useState<DateRange>({ from: "", to: "" });
   const [query, setQuery] = useState("");
 
   const [dialog, setDialog] = useState<DialogState>({
@@ -57,8 +64,7 @@ export function Timeline() {
   }, [searchParams, records]);
 
   const filtered = useMemo(() => {
-    const fromIso = from ? dayRangeToFilter(from).from : undefined;
-    const toIso = to ? dayRangeToFilter(to).to : undefined;
+    const { from: fromIso, to: toIso } = resolveRangeISO(range);
     const wanted = selectedEmotions.length
       ? new Set(selectedEmotions)
       : null;
@@ -82,7 +88,7 @@ export function Timeline() {
       }
       return true;
     });
-  }, [records, from, to, selectedEmotions, query]);
+  }, [records, range, selectedEmotions, query]);
 
   const groups = useMemo(() => {
     const map = new Map<string, MoodRecord[]>();
@@ -107,30 +113,9 @@ export function Timeline() {
     );
   }
 
-  function applyPreset(next: "all" | "7d" | "30d" | "90d") {
-    setPreset(next);
-    if (next === "all") {
-      setFrom("");
-      setTo("");
-      return;
-    }
-    const days = next === "7d" ? 7 : next === "30d" ? 30 : 90;
-    const range = lastDaysRange(days);
-    setFrom(toDateInputValue(new Date(range.from)));
-    setTo(toDateInputValue(new Date(range.to)));
-  }
-
-  function handleCustomDate(which: "from" | "to", value: string) {
-    if (which === "from") setFrom(value);
-    else setTo(value);
-    setPreset("custom");
-  }
-
   function clearFilters() {
     setSelectedEmotions([]);
-    setFrom("");
-    setTo("");
-    setPreset("all");
+    setRange({ preset: "all", from: "", to: "" });
     setQuery("");
   }
 
@@ -149,7 +134,10 @@ export function Timeline() {
   }
 
   const hasFilters =
-    selectedEmotions.length > 0 || from || to || query.trim().length > 0;
+    selectedEmotions.length > 0 ||
+    range.from ||
+    range.to ||
+    query.trim().length > 0;
 
   return (
     <div className="timeline-page">
@@ -158,13 +146,23 @@ export function Timeline() {
           <h1 className="page-title">时间线</h1>
           <p className="page-subtitle">按时间查看、筛选并管理你的状态记录。</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setDialog({ open: true, mode: "create" })}
-        >
-          + 新建记录
-        </button>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={handleBack}
+            title="返回上一页"
+          >
+            ← 返回
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setDialog({ open: true, mode: "create" })}
+          >
+            + 新建记录
+          </button>
+        </div>
       </header>
 
       <div className="timeline-filters">
@@ -182,26 +180,11 @@ export function Timeline() {
               aria-label="搜索记录"
             />
           </div>
-          <div className="preset-group" role="group" aria-label="快捷时间范围">
-            {(
-              [
-                ["all", "全部"],
-                ["7d", "近一周"],
-                ["30d", "近一月"],
-                ["90d", "近三月"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={preset === key ? "btn btn-primary sm" : "btn btn-ghost sm"}
-                aria-pressed={preset === key}
-                onClick={() => applyPreset(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <AntdRangePicker
+            presets={TIMELINE_PRESETS}
+            value={range}
+            onChange={setRange}
+          />
         </div>
 
         <div className="filter-group" role="group" aria-label="情绪筛选">
@@ -224,31 +207,6 @@ export function Timeline() {
               </button>
             );
           })}
-        </div>
-        <div className="date-range">
-          <label className="field-label" htmlFor="tl-from">
-            从
-          </label>
-          <input
-            id="tl-from"
-            type="date"
-            className="text-input sm"
-            value={from}
-            max={to || toDateInputValue()}
-            onChange={(e) => handleCustomDate("from", e.target.value)}
-          />
-          <label className="field-label" htmlFor="tl-to">
-            到
-          </label>
-          <input
-            id="tl-to"
-            type="date"
-            className="text-input sm"
-            value={to}
-            min={from || undefined}
-            max={toDateInputValue()}
-            onChange={(e) => handleCustomDate("to", e.target.value)}
-          />
         </div>
         {hasFilters ? (
           <button type="button" className="btn btn-ghost sm" onClick={clearFilters}>

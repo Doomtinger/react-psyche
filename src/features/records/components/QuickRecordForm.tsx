@@ -11,6 +11,7 @@ import {
 } from "../customEmotions";
 import { emotionColor, EMOTION_COLORS } from "@/shared/constants/emotions";
 import { AppError } from "@/domain/repositories/AppError";
+import { AntdDatePicker } from "@/shared/components/AntdDatePicker";
 import { toDateInputValue } from "@/shared/utils/date";
 import { cn } from "@/shared/utils/cn";
 import type {
@@ -335,13 +336,10 @@ export function QuickRecordForm({
           <label className="field-label" htmlFor="record-date">
             日期
           </label>
-          <input
+          <AntdDatePicker
             id="record-date"
-            type="date"
-            className="text-input"
             value={dateValue}
-            max={toDateInputValue()}
-            onChange={(e) => setDateValue(e.target.value)}
+            onChange={setDateValue}
           />
         </div>
         <div className="field">

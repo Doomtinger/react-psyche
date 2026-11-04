@@ -12,12 +12,13 @@ import { AtlasScene } from "./AtlasScene";
 import { AtlasFallback } from "./AtlasFallback";
 import { recordToAtlasNode } from "../adapters/recordToAtlasNode";
 import {
-  dayRangeToFilter,
-  lastDaysRange,
-  toDateInputValue,
-} from "@/shared/utils/date";
+  AntdRangePicker,
+  QUICK_RANGE_PRESETS,
+  resolveRangeISO,
+} from "@/shared/components/AntdRangePicker";
+import type { DateRange } from "@/shared/components/AntdRangePicker";
 
-type Preset = "all" | "7d" | "30d" | "custom";
+const ATLAS_PRESETS = QUICK_RANGE_PRESETS;
 
 export function MindAtlas() {
   const { records, loading, error } = useRecords();
@@ -25,23 +26,20 @@ export function MindAtlas() {
   const reducedMotion = useReducedMotion();
   const router = useRouter();
 
-  const [preset, setPreset] = useState<Preset>("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [range, setRange] = useState<DateRange>({ from: "", to: "" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [sceneFailed, setSceneFailed] = useState(false);
 
   const filteredRecords = useMemo(() => {
-    const fromIso = from ? dayRangeToFilter(from).from : undefined;
-    const toIso = to ? dayRangeToFilter(to).to : undefined;
+    const { from: fromIso, to: toIso } = resolveRangeISO(range);
     return records.filter(
       (r) =>
         (!fromIso || r.recordedAt >= fromIso) &&
         (!toIso || r.recordedAt < toIso)
     );
-  }, [records, from, to]);
+  }, [records, range]);
 
   const nodes = useMemo(
     () => recordToAtlasNode(filteredRecords),
@@ -53,29 +51,9 @@ export function MindAtlas() {
     [records, selectedId]
   );
 
-  const detailVisible = Boolean(selectedRecord) && !collapsed;
-
   function handleSelect(id: string | null) {
     setSelectedId(id);
     setCollapsed(false);
-  }
-
-  function applyPreset(next: Preset) {
-    setPreset(next);
-    if (next === "all") {
-      setFrom("");
-      setTo("");
-    } else if (next === "7d" || next === "30d") {
-      const range = lastDaysRange(next === "7d" ? 7 : 30);
-      setFrom(range.from.slice(0, 10));
-      setTo(toDateInputValue());
-    }
-  }
-
-  function handleCustomChange(which: "from" | "to", value: string) {
-    if (which === "from") setFrom(value);
-    else setTo(value);
-    setPreset("custom");
   }
 
   function resetView() {
@@ -115,46 +93,14 @@ export function MindAtlas() {
       </header>
 
       <div className="atlas-controls">
-        <div className="preset-group" role="group" aria-label="时间范围">
-          {(["all", "7d", "30d"] as Preset[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={preset === p ? "btn btn-primary sm" : "btn btn-ghost sm"}
-              onClick={() => applyPreset(p)}
-            >
-              {p === "all" ? "全部" : p === "7d" ? "近 7 天" : "近 30 天"}
-            </button>
-          ))}
-        </div>
-        <div className="date-range">
-          <label className="field-label" htmlFor="atlas-from">
-            从
-          </label>
-          <input
-            id="atlas-from"
-            type="date"
-            className="text-input sm"
-            value={from}
-            max={to || toDateInputValue()}
-            onChange={(e) => handleCustomChange("from", e.target.value)}
-          />
-          <label className="field-label" htmlFor="atlas-to">
-            到
-          </label>
-          <input
-            id="atlas-to"
-            type="date"
-            className="text-input sm"
-            value={to}
-            min={from || undefined}
-            max={toDateInputValue()}
-            onChange={(e) => handleCustomChange("to", e.target.value)}
-          />
-        </div>
+        <AntdRangePicker presets={ATLAS_PRESETS} value={range} onChange={setRange} />
       </div>
 
-      <div className={`atlas-body${detailVisible ? "" : " no-detail"}`}>
+      <div
+        className={`atlas-body${
+          selectedRecord && !collapsed ? "" : " no-detail"
+        }`}
+      >
         <div className="atlas-canvas">
           {loading || detecting ? (
             <Spinner label={detecting ? "正在检测 3D 支持…" : "正在加载记录…"} />
@@ -211,7 +157,7 @@ export function MindAtlas() {
           ) : null}
         </div>
 
-        {detailVisible ? (
+        {selectedRecord && !collapsed ? (
           <aside className="atlas-detail" aria-label="记录详情">
             <RecordDetail
               record={selectedRecord}
