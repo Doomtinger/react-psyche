@@ -224,6 +224,8 @@ export function buildDominantStops(
 export interface TimeTick {
   x: number;
   label: string;
+  /** Full local date/time, shown on hover. */
+  detail: string;
 }
 
 function weekStartKey(t: number): string {
@@ -233,14 +235,31 @@ function weekStartKey(t: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function shortDay(t: number): string {
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** Local YYYY/M/D — used for the visible time-range caption on the axis. */
+export function axisDate(t: number): string {
   const d = new Date(t);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/** Full local stamp for tick tooltips, so M/D labels are never ambiguous. */
+export function axisDateTime(t: number): string {
+  const d = new Date(t);
+  return `${axisDate(t)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function shortDay(t: number, withYear: boolean): string {
+  const d = new Date(t);
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  return withYear ? `${String(d.getFullYear()).slice(2)}/${md}` : md;
 }
 
 /**
  * Time ticks at day or week granularity. Overcrowded labels are skipped
  * (noise reduction) — gridlines stay meaningful without flooding the axis.
+ * `detail` carries the full date for a hover tooltip, since a short M/D label
+ * alone cannot distinguish records across years.
  */
 export function buildTimeTicks(
   series: ResonanceSeries,
@@ -248,6 +267,9 @@ export function buildTimeTicks(
   granularity: "day" | "week"
 ): TimeTick[] {
   const minGapPx = 52;
+  const withYear =
+    new Date(series.meta.from).getFullYear() !==
+    new Date(series.meta.to).getFullYear();
   const ticks: TimeTick[] = [];
   let lastX = -Infinity;
   let prevKey: string | null = null;
@@ -262,7 +284,11 @@ export function buildTimeTicks(
     if (x < PAD_L - 1 || x > PAD_L + PLOT_W + 1) continue;
     if (x - lastX < minGapPx && ticks.length > 0) continue;
     lastX = x;
-    ticks.push({ x, label: shortDay(slice.t) });
+    ticks.push({
+      x,
+      label: shortDay(slice.t, withYear),
+      detail: `${axisDateTime(slice.t)}${granularity === "week" ? "（按周刻度）" : ""}`,
+    });
   }
   return ticks;
 }

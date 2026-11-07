@@ -16,7 +16,12 @@ import {
   PAD_L,
 } from "./chartFrame";
 import { ResonanceControls } from "./ResonanceControls";
-import { ResonanceFlow } from "./ResonanceFlow";
+import { ResonanceFlow, type SliceHoverInfo } from "./ResonanceFlow";
+import {
+  ResonanceGuideBar,
+  ResonanceLegend,
+  SliceHoverCard,
+} from "./ResonanceGuide";
 import { ResonanceSimpleLine } from "./ResonanceSimpleLine";
 import {
   buildResonanceSeries,
@@ -88,6 +93,7 @@ export function ResonanceFlowView({
   const [watermark, setWatermark] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState<SliceHoverInfo | null>(null);
 
   const reducedMotion = forceStatic || osReduced;
   const complexRef = useRef<SVGSVGElement>(null);
@@ -102,6 +108,7 @@ export function ResonanceFlowView({
   useEffect(() => {
     setZoom((z) => (z ? clampDomain(z, full) : null));
     setSelectedSlice(null);
+    setHoverInfo(null);
   }, [full]);
 
   // Playback loop: waves grow from left to right.
@@ -166,7 +173,10 @@ export function ResonanceFlowView({
   const handleSelectSlice = useCallback(
     (index: number | null) => {
       setSelectedSlice(index);
-      if (index === null) return;
+      if (index === null) {
+        onSelect(null);
+        return;
+      }
       setPlaying(false);
       const slice = series.slices[index];
       if (slice) onSelect(slice.primaryRecordId);
@@ -190,22 +200,29 @@ export function ResonanceFlowView({
     if (selectedSlice === null) return null;
     const slice = series.slices[selectedSlice];
     if (!slice) return null;
-    const parts = [
-      shortStamp(slice.t),
-      STATE_LABELS[slice.state],
-      TREND_LABELS[slice.trend],
-      `相干 ${slice.coherence > 0 ? "+" : ""}${slice.coherence}`,
-      `强度 ${Math.round(slice.intensity * 10)}/10`,
+    const rows = [
+      { label: "时间", value: shortStamp(slice.t) },
+      { label: "状态", value: STATE_LABELS[slice.state] },
+      {
+        label: "相干度",
+        value: `${slice.coherence > 0 ? "+" : ""}${slice.coherence}（越接近 +1 越自洽）`,
+      },
+      { label: "强度", value: `${Math.round(slice.intensity * 10)}/10` },
+      { label: "走势", value: TREND_LABELS[slice.trend] },
     ];
     if (slice.perturbation.kind !== "none") {
-      parts.push(
-        `${PERTURBATION_LABELS[slice.perturbation.kind]} ${slice.perturbation.summary}`
-      );
+      rows.push({
+        label: "事件",
+        value: `${PERTURBATION_LABELS[slice.perturbation.kind]} ${slice.perturbation.summary}`.trim(),
+      });
     }
     if (slice.recordIds.length > 1) {
-      parts.push(`含 ${slice.recordIds.length} 条记录（降采样合并）`);
+      rows.push({
+        label: "记录",
+        value: `合并了 ${slice.recordIds.length} 条相近时间的记录`,
+      });
     }
-    return parts.join(" · ");
+    return rows;
   }, [selectedSlice, series]);
 
   const exportPng = useCallback(async () => {
@@ -304,7 +321,10 @@ export function ResonanceFlowView({
     <div className="resonance-body">
       <ResonanceControls
         simpleView={simpleView}
-        onSimpleViewChange={setSimpleView}
+        onSimpleViewChange={(v) => {
+          setSimpleView(v);
+          setHoverInfo(null);
+        }}
         playing={playing}
         onTogglePlay={handleTogglePlay}
         progress={progress}
@@ -327,6 +347,8 @@ export function ResonanceFlowView({
         onExitToVisualization={onExitToVisualization}
       />
 
+      <ResonanceGuideBar simpleView={simpleView} />
+
       <div className="atlas-body">
         <div className="atlas-canvas resonance-canvas">
           {loading ? (
@@ -346,8 +368,10 @@ export function ResonanceFlowView({
               series={series}
               domain={domain}
               granularity={granularity}
+              highlightEmotion={highlightEmotion}
               selectedSlice={selectedSlice}
               onSelectSlice={handleSelectSlice}
+              svgRef={simpleRef}
             />
           ) : (
             <ResonanceFlow
@@ -363,9 +387,35 @@ export function ResonanceFlowView({
               onSelectSlice={handleSelectSlice}
               onZoom={handleZoom}
               onPanShift={handlePanShift}
+              onHoverChange={setHoverInfo}
               svgRef={complexRef}
             />
           )}
+          {hoverInfo && chartReady && !simpleView ? (
+            <div
+              className="res-hover-card"
+              style={{
+                left:
+                  hoverInfo.x > hoverInfo.w - 280
+                    ? undefined
+                    : hoverInfo.x + 14,
+                right:
+                  hoverInfo.x > hoverInfo.w - 280
+                    ? hoverInfo.w - hoverInfo.x + 14
+                    : undefined,
+                top:
+                  hoverInfo.y > hoverInfo.h - 240
+                    ? undefined
+                    : hoverInfo.y + 14,
+                bottom:
+                  hoverInfo.y > hoverInfo.h - 240
+                    ? hoverInfo.h - hoverInfo.y + 14
+                    : undefined,
+              }}
+            >
+              <SliceHoverCard slice={hoverInfo.slice} />
+            </div>
+          ) : null}
         </div>
 
         <DetailAside
@@ -374,40 +424,16 @@ export function ResonanceFlowView({
           onLocate={onLocate}
           legend={
             chartReady ? (
-              <div className="resonance-legend">
-                <span className="lg">
-                  <svg width="18" height="12" aria-hidden="true">
-                    <circle cx="9" cy="6" r="3" fill="#4cc38a" />
-                  </svg>
-                  正向事件涟漪
-                </span>
-                <span className="lg">
-                  <svg width="18" height="12" aria-hidden="true">
-                    <path d="M3 1 L15 1 L9 11 Z" fill="none" stroke="#e0586b" strokeWidth="1.4" />
-                  </svg>
-                  负向冲击漩涡
-                </span>
-                <span className="lg">
-                  <svg width="18" height="12" aria-hidden="true">
-                    <circle cx="9" cy="6" r="2" fill="#6c788f" />
-                  </svg>
-                  弱扰动
-                </span>
-                <span className="lg res-legend-text">
-                  顺滑缠绕＝共振自洽 · 反向交叉＝失谐拉扯 · 空白断层＝情感隔离 · 骤然增幅＝延迟爆发
-                </span>
-                <span className="lg res-legend-text">
-                  长时间无记录的区间，波纹会自动淡化（缺失不代表平静）
-                </span>
-                {selectedSliceInfo ? (
-                  <span className="lg resonance-slice-info">{selectedSliceInfo}</span>
-                ) : null}
-              </div>
+              <ResonanceLegend
+                series={series}
+                simpleView={simpleView}
+                selectedSliceInfo={selectedSliceInfo}
+              />
             ) : null
           }
         >
           <p className="muted">
-            点击图上的事件标记或波纹切片，查看当时写下的原始记录。滚轮缩放、拖拽平移时间轴；播放可回看心理状态如何随时间生长。
+            把鼠标停在图上任意时刻，就能看到那一刻的相干度、情绪和事件的白话解释；点击可打开当时写下的原始记录。滚轮缩放、拖拽平移时间轴，播放可回看状态随时间的变化。
           </p>
           {records.length === 1 ? (
             <p className="landscape-note">

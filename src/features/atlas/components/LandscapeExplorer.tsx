@@ -135,7 +135,9 @@ export function LandscapeExplorer() {
         <div>
           <h1 className="page-title">心理景观</h1>
           <p className="page-subtitle">
-            基于你的真实记录生成的动态 3D 世界：强度决定起伏，时间决定流动，情绪决定色彩。缺失数据代表未知，而非平静。
+            {isResonance
+              ? "时序共振流：把每次记录中的情绪、内心是否一致，以及外部事件，沿着时间铺开回看。仅作感受可视化，缺失数据代表未知，而非平静。"
+              : "基于你的真实记录生成的动态 3D 世界：强度决定起伏，时间决定流动，情绪决定色彩。缺失数据代表未知，而非平静。"}
           </p>
         </div>
       </header>

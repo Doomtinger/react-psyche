@@ -1,5 +1,4 @@
-import { formatDateTime } from "@/shared/utils/date";
-import { MARKER_COLORS, xOf } from "./chartFrame";
+import { axisDateTime, MARKER_COLORS, xOf } from "./chartFrame";
 import {
   PERTURBATION_LABELS,
   STATE_LABELS,
@@ -19,14 +18,17 @@ interface SliceMarkersProps {
 }
 
 function markerTooltip(slice: ResonanceSlice): string {
+  const coh = `${slice.coherence > 0 ? "+" : ""}${slice.coherence}`;
   const lines = [
-    formatDateTime(new Date(slice.t).toISOString()),
-    `${STATE_LABELS[slice.state]} · ${TREND_LABELS[slice.trend]} · 相干 ${slice.coherence > 0 ? "+" : ""}${slice.coherence}`,
+    axisDateTime(slice.t),
+    `状态：${STATE_LABELS[slice.state]} · 走势：${TREND_LABELS[slice.trend]}`,
+    `相干度 ${coh}（越接近 +1 越自洽，越低越拉扯）`,
   ];
   if (slice.perturbation.kind !== "none") {
-    lines.push(`${PERTURBATION_LABELS[slice.perturbation.kind]} ${slice.perturbation.summary}`);
+    lines.push(`事件：${PERTURBATION_LABELS[slice.perturbation.kind]} ${slice.perturbation.summary}`);
   }
   if (slice.excerpt) lines.push(slice.excerpt);
+  lines.push("点击这里打开当时的原始记录");
   return lines.join("\n");
 }
 

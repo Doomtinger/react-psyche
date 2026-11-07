@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { EmotionTag } from "@/domain/entities/MoodRecord";
+import { EMOTION_OPTIONS } from "@/features/records/types";
 import { cn } from "@/shared/utils/cn";
 import {
+  axisDate,
   buildDominantStops,
   buildEnvFrame,
   buildTimeTicks,
@@ -25,10 +27,15 @@ import {
   type TimeTick,
 } from "./chartFrame";
 import { SliceMarkers } from "./SliceMarkers";
-import type { ResonanceSeries, TimeDomain } from "./types";
+import type {
+  ResonanceSeries,
+  ResonanceSlice,
+  TimeDomain,
+} from "./types";
 
 interface WavePathData {
   tag: EmotionTag;
+  label: string;
   color: string;
   d: string;
   coreOpacity: number;
@@ -39,6 +46,74 @@ interface SlicePosition {
   index: number;
   x: number;
   bandWidth: number;
+}
+
+/** Hover payload rendered by the parent as an HTML reading card. */
+export interface SliceHoverInfo {
+  slice: ResonanceSlice;
+  /** Pointer position in CSS pixels relative to the chart canvas. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Max distance in viewBox px for a pointer to count as "on" a slice. */
+const MAX_HOVER_DIST = 46;
+
+interface ViewPoint {
+  vx: number;
+  vy: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Client → viewBox coordinates. The SVG uses the default
+ * `xMidYMid meet` aspect ratio, so letterbox margins must be accounted for,
+ * otherwise hover/click targets drift away from the cursor on wide screens.
+ */
+function toViewPoint(
+  el: SVGSVGElement | null,
+  clientX: number,
+  clientY: number
+): ViewPoint | null {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  const scale = Math.min(rect.width / CHART_W, rect.height / CHART_H);
+  const ox = (rect.width - CHART_W * scale) / 2;
+  const oy = (rect.height - CHART_H * scale) / 2;
+  return {
+    vx: (clientX - rect.left - ox) / scale,
+    vy: (clientY - rect.top - oy) / scale,
+    x: clientX - rect.left,
+    y: clientY - rect.top,
+    w: rect.width,
+    h: rect.height,
+  };
+}
+
+function nearestSliceIndex(
+  positions: SlicePosition[],
+  vx: number
+): number | null {
+  let best: number | null = null;
+  let dist = MAX_HOVER_DIST;
+  for (const p of positions) {
+    const d = Math.abs(p.x - vx);
+    if (d < dist) {
+      dist = d;
+      best = p.index;
+    }
+  }
+  return best;
+}
+
+function emotionLabel(tag: EmotionTag): string {
+  return EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
 }
 
 interface FlowView {
@@ -65,6 +140,8 @@ interface ResonanceFlowProps {
   onZoom: (factor: number, anchorT: number) => void;
   /** Shift the visible window by a time delta (pan). */
   onPanShift: (deltaT: number) => void;
+  /** Show/hide the plain-language hover card for a slice. */
+  onHoverChange: (info: SliceHoverInfo | null) => void;
   svgRef: React.RefObject<SVGSVGElement>;
 }
 
@@ -166,6 +243,7 @@ function buildFlowView(
       highlightEmotion === null || highlightEmotion === tag;
     return {
       tag,
+      label: emotionLabel(tag),
       color: tagColors.get(tag) ?? "#9aa0a6",
       d: `M ${parts.join(" L ")}`,
       coreOpacity: matches ? 0.78 : 0.1,
@@ -214,6 +292,7 @@ export function ResonanceFlow({
   onSelectSlice,
   onZoom,
   onPanShift,
+  onHoverChange,
   svgRef,
 }: ResonanceFlowProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -222,6 +301,7 @@ export function ResonanceFlow({
   const panRef = useRef<{ lastVx: number; movedPx: number } | null>(null);
   const suppressClickRef = useRef(false);
   const [dragging, setDragging] = useState(false);
+  const hoverIndexRef = useRef<number | null>(null);
 
   const animate = playing && !reducedMotion;
 
@@ -263,8 +343,8 @@ export function ResonanceFlow({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const vx = ((e.clientX - rect.left) / rect.width) * CHART_W;
+      const p = toViewPoint(el, e.clientX, e.clientY);
+      const vx = p?.vx ?? PAD_L + PLOT_W / 2;
       const clampedVx = Math.min(PAD_L + PLOT_W, Math.max(PAD_L, vx));
       onZoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, tOf(clampedVx, domain));
     };
@@ -272,27 +352,48 @@ export function ResonanceFlow({
     return () => el.removeEventListener("wheel", onWheel);
   }, [domain, onZoom, svgRef]);
 
-  function eventViewX(e: React.PointerEvent<SVGSVGElement>): number {
-    const el = svgRef.current;
-    if (!el) return 0;
-    const rect = el.getBoundingClientRect();
-    return ((e.clientX - rect.left) / rect.width) * CHART_W;
+  function viewPointOf(e: React.PointerEvent<SVGSVGElement>): ViewPoint | null {
+    return toViewPoint(svgRef.current, e.clientX, e.clientY);
+  }
+
+  function inPlot(p: ViewPoint): boolean {
+    return (
+      p.vx >= PAD_L &&
+      p.vx <= PAD_L + PLOT_W &&
+      p.vy >= PAD_T &&
+      p.vy <= PAD_T + PLOT_H
+    );
   }
 
   function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (e.button !== 0) return;
     suppressClickRef.current = false;
-    panRef.current = { lastVx: eventViewX(e), movedPx: 0 };
+    panRef.current = { lastVx: viewPointOf(e)?.vx ?? 0, movedPx: 0 };
+    hoverIndexRef.current = null;
+    onHoverChange(null);
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragging(true);
   }
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const p = viewPointOf(e);
+    if (!p) return;
     const pan = panRef.current;
-    if (!pan) return;
-    const vx = eventViewX(e);
-    const dx = vx - pan.lastVx;
-    pan.lastVx = vx;
+    if (!pan) {
+      // Hover anywhere in the plot explains that moment in plain language.
+      // Only notify when the slice changes, so pointer moves don't re-render
+      // the whole view on every frame.
+      const index = inPlot(p) ? nearestSliceIndex(view.slicePositions, p.vx) : null;
+      if (index === hoverIndexRef.current) return;
+      hoverIndexRef.current = index;
+      const slice = index === null ? null : series.slices[index];
+      onHoverChange(
+        slice ? { slice, x: p.x, y: p.y, w: p.w, h: p.h } : null
+      );
+      return;
+    }
+    const dx = p.vx - pan.lastVx;
+    pan.lastVx = p.vx;
     pan.movedPx += Math.abs(dx);
     if (pan.movedPx > 4) {
       suppressClickRef.current = true;
@@ -301,7 +402,10 @@ export function ResonanceFlow({
     }
   }
 
-  function handlePointerUp(e: React.PointerEvent<SVGSVGElement>) {
+  function handlePointerUp(
+    e: React.PointerEvent<SVGSVGElement>,
+    allowSelect = true
+  ) {
     if (!panRef.current) return;
     const wasClick = panRef.current.movedPx <= 4;
     panRef.current = null;
@@ -311,7 +415,16 @@ export function ResonanceFlow({
     } catch {
       // pointer capture may already be released
     }
-    if (wasClick) onSelectSlice(null);
+    if (!allowSelect || !wasClick || suppressClickRef.current) return;
+    const p = viewPointOf(e);
+    const index = p && inPlot(p) ? nearestSliceIndex(view.slicePositions, p.vx) : null;
+    onSelectSlice(index);
+  }
+
+  function handlePointerLeave(e: React.PointerEvent<SVGSVGElement>) {
+    handlePointerUp(e, false);
+    hoverIndexRef.current = null;
+    onHoverChange(null);
   }
 
   const clipWidth = Math.max(0, progress * PLOT_W);
@@ -330,11 +443,11 @@ export function ResonanceFlow({
         reducedMotion && "res-static"
       )}
       role="img"
-      aria-label={`时序心理共振流图：${series.meta.sliceCount} 个时间切片，横轴为时间，纵轴为心理相干度（+1 共振自洽，-1 失谐拉扯）`}
+      aria-label={`时序心理共振流图：${series.meta.sliceCount} 个时间切片。横轴为时间，纵轴为相干度，+1 表示感受与想法一致，-1 表示几种情绪互相拉扯；彩色细线各代表一种情绪。悬停可查看解释，点击可打开原始记录。`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerUp={(e) => handlePointerUp(e)}
+      onPointerLeave={handlePointerLeave}
     >
       <defs>
         <linearGradient
@@ -420,6 +533,7 @@ export function ResonanceFlow({
             fill="var(--text-faint)"
           >
             {tick.label}
+            <title>{tick.detail}</title>
           </text>
         </g>
       ))}
@@ -442,6 +556,7 @@ export function ResonanceFlow({
       <g clipPath={`url(#${uid}-clip)`} data-progress-group="true">
         {view.waves.map((w) => (
           <g key={w.tag}>
+            <title>{`${w.label}：一股彩色细线代表一种情绪，离粗线越远表示这种情绪越强`}</title>
             <path
               d={w.d}
               fill="none"
@@ -469,7 +584,9 @@ export function ResonanceFlow({
           strokeWidth={2.4}
           strokeLinecap="round"
           strokeLinejoin="round"
-        />
+        >
+          <title>粗线＝相干度走势：越高越自洽，越低越拉扯。颜色是当时最主导的情绪。</title>
+        </path>
         <SliceMarkers
           slices={series.slices}
           domain={domain}
@@ -492,6 +609,53 @@ export function ResonanceFlow({
           opacity={0.4}
         />
       ) : null}
+
+      {/* Visible axis explanations. Colors are inlined (not CSS vars) so the
+          exported PNG keeps them — external stylesheets aren't serialized. */}
+      <g pointerEvents="none">
+        <rect x={PAD_L + 6} y={PAD_T + 4} width={350} height={20} rx={4} fill="#0b0f1a" opacity={0.8} />
+        <text x={PAD_L + 12} y={PAD_T + 18} fontSize={11.5} fill="#9aa6bd">
+          纵轴 · 相干度：↑ 越高，感受与想法越一致（共振自洽）
+        </text>
+        <rect
+          x={PAD_L + 6}
+          y={PAD_T + PLOT_H - 26}
+          width={300}
+          height={20}
+          rx={4}
+          fill="#0b0f1a"
+          opacity={0.8}
+        />
+        <text
+          x={PAD_L + 12}
+          y={PAD_T + PLOT_H - 12}
+          fontSize={11.5}
+          fill="#9aa6bd"
+        >
+          ↓ 越低，几种情绪越互相拉扯（失谐）
+        </text>
+        <text
+          x={PAD_L + PLOT_W - 10}
+          y={yOfCoherence(0) - 8}
+          textAnchor="end"
+          fontSize={11}
+          fill="#6c788f"
+        >
+          0 · 中性
+        </text>
+        <text x={PAD_L} y={CHART_H - 10} fontSize={11} fill="#6c788f">
+          {`横轴 · 时间 →　${axisDate(domain.d0)} — ${axisDate(domain.d1)}`}
+        </text>
+        <text
+          x={PAD_L + PLOT_W}
+          y={CHART_H - 10}
+          textAnchor="end"
+          fontSize={11}
+          fill="#6c788f"
+        >
+          点击图上任意时刻，查看当时的原始记录
+        </text>
+      </g>
     </svg>
   );
 }

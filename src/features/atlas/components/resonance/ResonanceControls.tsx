@@ -71,19 +71,19 @@ export function ResonanceControls({
             type="button"
             className={!simpleView ? "btn btn-primary sm" : "btn btn-ghost sm"}
             aria-pressed={!simpleView}
-            title="多层子波共振流图"
+            title="多条彩色细线＝同时存在的情绪，纵轴＝相干度（内心是否一致）"
             onClick={() => onSimpleViewChange(false)}
           >
-            复杂共振流图
+            共振流图
           </button>
           <button
             type="button"
             className={simpleView ? "btn btn-primary sm" : "btn btn-ghost sm"}
             aria-pressed={simpleView}
-            title="传统情绪折线（降级方案）"
+            title="只看一条线：纵轴＝情绪强度 0–10，更容易读"
             onClick={() => onSimpleViewChange(true)}
           >
-            简易折线图
+            强度折线
           </button>
         </div>
       </div>
@@ -127,12 +127,13 @@ export function ResonanceControls({
       ) : null}
 
       <div className="landscape-control-block">
-        <span className="landscape-control-label">粒度</span>
-        <div className="preset-group" role="group" aria-label="时间刻度粒度">
+        <span className="landscape-control-label" title="只改变日期刻度的疏密，不会合并或筛选记录">时间刻度</span>
+        <div className="preset-group" role="group" aria-label="时间刻度疏密">
           <button
             type="button"
             className={granularity === "day" ? "btn btn-primary sm" : "btn btn-ghost sm"}
             aria-pressed={granularity === "day"}
+            title="每天标一个日期"
             onClick={() => onGranularityChange("day")}
           >
             按天
@@ -141,6 +142,7 @@ export function ResonanceControls({
             type="button"
             className={granularity === "week" ? "btn btn-primary sm" : "btn btn-ghost sm"}
             aria-pressed={granularity === "week"}
+            title="每周只标一个日期，适合记录很多时减少拥挤；记录本身不变"
             onClick={() => onGranularityChange("week")}
           >
             按周
@@ -181,7 +183,7 @@ export function ResonanceControls({
       </div>
 
       <div className="landscape-control-block">
-        <span className="landscape-control-label">情绪</span>
+        <span className="landscape-control-label" title="选中后只突出这种情绪对应的细线／圆点，其他会淡化">情绪高亮</span>
         <div className="filter-group" role="group" aria-label="情绪高亮">
           {EMOTION_OPTIONS.map((opt) => {
             const active = highlightEmotion === opt.value;

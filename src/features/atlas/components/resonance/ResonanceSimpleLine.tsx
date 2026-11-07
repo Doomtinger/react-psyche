@@ -1,7 +1,10 @@
 "use client";
 
 import { useId, useMemo } from "react";
+import type { EmotionTag } from "@/domain/entities/MoodRecord";
 import {
+  axisDate,
+  axisDateTime,
   buildDominantStops,
   buildTimeTicks,
   CHART_H,
@@ -14,15 +17,31 @@ import {
   xOf,
   yOfNorm,
 } from "./chartFrame";
+import { STATE_LABELS } from "./resonanceEngine";
 import { SliceMarkers } from "./SliceMarkers";
-import type { ResonanceSeries, TimeDomain } from "./types";
+import type { ResonanceSeries, ResonanceSlice, TimeDomain } from "./types";
 
 interface ResonanceSimpleLineProps {
   series: ResonanceSeries;
   domain: TimeDomain;
   granularity: "day" | "week";
+  highlightEmotion: EmotionTag | null;
   selectedSlice: number | null;
   onSelectSlice: (index: number | null) => void;
+  svgRef: React.RefObject<SVGSVGElement>;
+}
+
+function dotTooltip(slice: ResonanceSlice): string {
+  const emotions = slice.emotions.map((e) => e.label).join("、") || "未标注";
+  return [
+    axisDateTime(slice.t),
+    `强度 ${Math.round(slice.intensity * 10)}/10（由记录时的 1–5 档换算，不是评分）`,
+    `情绪：${emotions} · 状态：${STATE_LABELS[slice.state]}`,
+    "点击打开这条原始记录",
+    slice.excerpt,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function intensityTickLabel(v: number): string {
@@ -39,8 +58,10 @@ export function ResonanceSimpleLine({
   series,
   domain,
   granularity,
+  highlightEmotion,
   selectedSlice,
   onSelectSlice,
+  svgRef,
 }: ResonanceSimpleLineProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
@@ -69,10 +90,11 @@ export function ResonanceSimpleLine({
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${CHART_W} ${CHART_H}`}
       className="resonance-svg"
       role="img"
-      aria-label={`简易情绪折线图：${series.meta.sliceCount} 个时间切片，纵轴为情绪强度 0 到 10`}
+      aria-label={`简易情绪折线图：${series.meta.sliceCount} 个时间切片。横轴为时间，纵轴为情绪强度 0 到 10；圆点颜色代表当时的主导情绪，点击圆点可查看原始记录。`}
     >
       <defs>
         <linearGradient
@@ -142,6 +164,7 @@ export function ResonanceSimpleLine({
             fill="var(--text-faint)"
           >
             {tick.label}
+            <title>{tick.detail}</title>
           </text>
         </g>
       ))}
@@ -152,7 +175,9 @@ export function ResonanceSimpleLine({
         stroke="var(--text-faint)"
         strokeWidth={1.4}
         strokeDasharray="4 5"
-      />
+      >
+        <title>灰色虚线：长时间没有记录或当时写成麻木，缺失不代表平静</title>
+      </path>
       <path
         d={solidD}
         fill="none"
@@ -160,26 +185,33 @@ export function ResonanceSimpleLine({
         strokeWidth={2.2}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
+      >
+        <title>实线＝情绪强度走势，越高表示那次记录的情绪越强；颜色是当时最主导的情绪</title>
+      </path>
 
-      {series.slices.map((slice) => (
-        <circle
-          key={slice.index}
-          cx={xOf(slice.t, domain)}
-          cy={yOfNorm(slice.intensity)}
-          r={selectedSlice === slice.index ? 4.5 : 2.6}
-          fill={slice.emotions[0]?.color ?? "#9aa0a6"}
-          opacity={slice.isGap ? 0.25 : 0.9}
-          stroke={
-            selectedSlice === slice.index ? "var(--accent)" : "none"
-          }
-          strokeWidth={selectedSlice === slice.index ? 1.6 : 0}
-          onClick={() => onSelectSlice(slice.index)}
-          className="res-hit"
-        >
-          <title>{`强度 ${Math.round(slice.intensity * 10)}/10${slice.excerpt ? ` · ${slice.excerpt}` : ""}`}</title>
-        </circle>
-      ))}
+      {series.slices.map((slice) => {
+        const dimmed =
+          highlightEmotion !== null &&
+          slice.emotions[0]?.tag !== highlightEmotion;
+        return (
+          <circle
+            key={slice.index}
+            cx={xOf(slice.t, domain)}
+            cy={yOfNorm(slice.intensity)}
+            r={selectedSlice === slice.index ? 4.5 : 2.6}
+            fill={slice.emotions[0]?.color ?? "#9aa0a6"}
+            opacity={slice.isGap || dimmed ? 0.25 : 0.9}
+            stroke={
+              selectedSlice === slice.index ? "var(--accent)" : "none"
+            }
+            strokeWidth={selectedSlice === slice.index ? 1.6 : 0}
+            onClick={() => onSelectSlice(slice.index)}
+            className="res-hit"
+          >
+            <title>{dotTooltip(slice)}</title>
+          </circle>
+        );
+      })}
 
       <SliceMarkers
         slices={series.slices}
@@ -188,6 +220,25 @@ export function ResonanceSimpleLine({
         selectedSlice={selectedSlice}
         onSelectSlice={onSelectSlice}
       />
+
+      <g pointerEvents="none">
+        <rect x={PAD_L + 6} y={PAD_T + 4} width={380} height={20} rx={4} fill="#0b0f1a" opacity={0.8} />
+        <text x={PAD_L + 12} y={PAD_T + 18} fontSize={11.5} fill="#9aa6bd">
+          纵轴 · 情绪强度：↑ 越高，那次记录里的情绪越强（0–10 为换算值）
+        </text>
+        <text x={PAD_L} y={CHART_H - 10} fontSize={11} fill="#6c788f">
+          {`横轴 · 时间 →　${axisDate(domain.d0)} — ${axisDate(domain.d1)}`}
+        </text>
+        <text
+          x={PAD_L + PLOT_W}
+          y={CHART_H - 10}
+          textAnchor="end"
+          fontSize={11}
+          fill="#6c788f"
+        >
+          圆点＝一次记录 · 点击可查看原文
+        </text>
+      </g>
     </svg>
   );
 }
