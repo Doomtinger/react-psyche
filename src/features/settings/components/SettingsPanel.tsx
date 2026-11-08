@@ -11,6 +11,7 @@ import {
 } from "@/shared/utils/download";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import type { ImportPreview } from "@/application/ImportService";
+import { EmotionImagerySettings } from "./EmotionImagerySettings";
 
 const DATA_NOTICE =
   "记录保存在当前浏览器的本地存储（IndexedDB）中。清除浏览器数据、更换设备或浏览器，都可能导致记录无法访问。请定期导出备份。本地存储不等于加密保险库，我们无法保证浏览器永远不会清除这些数据。";
@@ -206,6 +207,8 @@ export function SettingsPanel() {
           我们也会遵循你操作系统的“减少动态效果”设置。
         </p>
       </section>
+
+      <EmotionImagerySettings reducedMotion={reducedMotionPref} />
 
       <section className="settings-card danger">
         <h2 className="settings-card-title">删除数据</h2>
