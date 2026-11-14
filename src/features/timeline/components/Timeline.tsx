@@ -115,7 +115,7 @@ export function Timeline() {
 
   function clearFilters() {
     setSelectedEmotions([]);
-    setRange({ preset: "all", from: "", to: "" });
+    setRange({ from: "", to: "" });
     setQuery("");
   }
 

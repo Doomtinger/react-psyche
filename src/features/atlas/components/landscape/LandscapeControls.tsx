@@ -5,7 +5,7 @@ import { EMOTION_OPTIONS } from "@/features/records/types";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { emotionColor } from "@/shared/constants/emotions";
 import { cn } from "@/shared/utils/cn";
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
+import type { EmotionChoice } from "@/features/records/customEmotions";
 import type { LandscapeMode } from "./types";
 
 type RangePreset = "7d" | "30d" | "all";
@@ -17,8 +17,11 @@ interface LandscapeControlsProps {
   onRangeChange: (preset: RangePreset) => void;
   playhead: number;
   onPlayheadChange: (value: number) => void;
-  highlightEmotion: EmotionTag | null;
-  onHighlightChange: (emotion: EmotionTag | null) => void;
+  /** Built-in tag or a custom-emotion key. */
+  highlightEmotion: string | null;
+  onHighlightChange: (emotion: string | null) => void;
+  /** Custom feelings present in the current range. */
+  extraEmotions?: EmotionChoice[];
   reducedMotion: boolean;
   onReducedMotionChange: (value: boolean) => void;
   onResetView: () => void;
@@ -50,12 +53,21 @@ export function LandscapeControls({
   onPlayheadChange,
   highlightEmotion,
   onHighlightChange,
+  extraEmotions = [],
   reducedMotion,
   onReducedMotionChange,
   onResetView,
 }: LandscapeControlsProps) {
   const mobile = useIsMobile() === true;
   const [expanded, setExpanded] = useState(false);
+  const chips: EmotionChoice[] = [
+    ...EMOTION_OPTIONS.map((o) => ({
+      key: o.value,
+      label: o.label,
+      color: emotionColor(o.value),
+    })),
+    ...extraEmotions,
+  ];
   const collapsed = mobile && !expanded;
   const hide = (base: string) => cn(base, collapsed && "is-mobile-collapsed");
 
@@ -114,23 +126,18 @@ export function LandscapeControls({
       <div className={hide("landscape-control-block")}>
         <span className="landscape-control-label">情绪</span>
         <div className="filter-group" role="group" aria-label="情绪高亮">
-          {EMOTION_OPTIONS.map((opt) => {
-            const active = highlightEmotion === opt.value;
+          {chips.map((opt) => {
+            const active = highlightEmotion === opt.key;
             return (
               <button
-                key={opt.value}
+                key={opt.key}
                 type="button"
                 className={cn("filter-chip", active && "active")}
                 aria-pressed={active}
-                onClick={() =>
-                  onHighlightChange(active ? null : opt.value)
-                }
+                onClick={() => onHighlightChange(active ? null : opt.key)}
                 style={
                   active
-                    ? {
-                        borderColor: emotionColor(opt.value),
-                        color: emotionColor(opt.value),
-                      }
+                    ? { borderColor: opt.color, color: opt.color }
                     : undefined
                 }
               >

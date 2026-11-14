@@ -46,4 +46,20 @@ describe("ResonanceControls phone mode", () => {
     expect(screen.queryByRole("button", { name: "更多设置" })).toBeNull();
     expect(document.querySelectorAll(".is-mobile-collapsed")).toHaveLength(0);
   });
+
+  it("offers custom feelings as highlight chips too", () => {
+    const onHighlightChange = vi.fn();
+    render(
+      <ResonanceControls
+        {...props}
+        isMobile={false}
+        onHighlightChange={onHighlightChange}
+        extraEmotions={[
+          { key: "custom:x", label: "空落落", color: "#123456" },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "空落落" }));
+    expect(onHighlightChange).toHaveBeenCalledWith("custom:x");
+  });
 });

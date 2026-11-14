@@ -128,8 +128,16 @@ export const EMOTION_KEYWORDS: Record<EmotionTag, readonly string[]> = {
   angry: ["生气", "愤怒", "恼火", "烦躁", "火大", "气不过", "愤愤", "恼人"],
   tired: ["疲惫", "累", "乏力", "困倦", "倦", "耗尽", "提不起", "无力"],
   excited: ["兴奋", "期待", "激动", "迫不及待", "跃跃欲试", "振奋"],
-  confused: ["困惑", "迷茫", "不确定", "纠结", "矛盾", "不知道", "混乱", "摇摆"],
-  other: [],
+  confused: [
+    "困惑", "迷茫", "不确定", "纠结", "矛盾", "不知道", "混乱", "摇摆",
+    "理不清", "拿不准", "左右为难", "犹豫",
+  ],
+  // 其他 / 难以归类 also needs a semantic hook: an empty list made the tag
+  // invisible whenever feelings had to be inferred from the note.
+  other: [
+    "说不清", "说不上来", "说不出来", "难以形容", "难以归类", "五味杂陈",
+    "很复杂", "莫名的", "怪怪的", "不知道是什么感觉",
+  ],
 };
 
 /** Valence groups used to detect 对抗叠加 (mixed opposite emotions). */
@@ -140,4 +148,10 @@ export const NEGATIVE_TAGS: readonly EmotionTag[] = [
   "angry",
   "tired",
 ];
-export const AMBIGUOUS_TAGS: readonly EmotionTag[] = ["confused", "other"];
+
+/**
+ * Neither clearly positive nor negative, but still visually meaningful:
+ * 困惑 and 难以归类 count as an "unintegrated layer" in coherence, rather
+ * than being excluded from the analysis altogether.
+ */
+export const UNRESOLVED_TAGS: readonly EmotionTag[] = ["confused", "other"];

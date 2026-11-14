@@ -166,9 +166,14 @@ export interface TagImagery {
   primary: ImageryId;
   /** 同一标签下可切换查看的相近意象。 */
   related: ImageryId[];
+  /** 没有预设意象的标签：弹窗里可直接挑选全部意象。 */
+  chooseAny?: boolean;
 }
 
-/** 8 个内置情绪标签（不含「其他」）与意象的对应关系。 */
+/** All 11 imagery states, in spec order. */
+export const IMAGERY_IDS = Object.keys(IMAGERY) as ImageryId[];
+
+/** 全部 9 个内置情绪标签与意象的对应关系。 */
 export const TAG_IMAGERY: TagImagery[] = [
   { tag: "calm", primary: "calm-lake", related: ["release"] },
   {
@@ -193,6 +198,13 @@ export const TAG_IMAGERY: TagImagery[] = [
     tag: "confused",
     primary: "cross-currents",
     related: ["restless-particles", "inward-fog"],
+  },
+  {
+    // 其他 / 难以归类：没有专属意象，也不臆造一个；开放全部 11 种供查看。
+    tag: "other",
+    primary: "numb-haze",
+    related: [],
+    chooseAny: true,
   },
 ];
 

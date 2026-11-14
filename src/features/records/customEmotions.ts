@@ -43,6 +43,9 @@ export interface DisplayEmotion {
   isCustom: boolean;
 }
 
+/** A selectable emotion in highlight controls: built-in tag or custom key. */
+export type EmotionChoice = Pick<DisplayEmotion, "key" | "label" | "color">;
+
 /**
  * Unified emotion list for a record: built-in tags first (minus the generic
  * 其他 when custom tags exist), then custom entries with the color the user

@@ -33,7 +33,7 @@ const COMPLEX_STEPS = [
   },
   {
     title: "2 · 再看颜色",
-    body: "每股彩色细线是一种情绪，离粗线越远、起伏越大，那种情绪越强。粗线的颜色是当时最主导的情绪。颜色只区分情绪种类，不表示好坏。",
+    body: "每股彩色细线是一种情绪，离粗线越远、起伏越大，那种情绪越强。粗线的颜色由当时所有情绪按强度混合，每种情绪都不会被漏掉。颜色只区分情绪种类，不表示好坏。",
   },
   {
     title: "3 · 最后看标记和空白",
@@ -47,8 +47,8 @@ const SIMPLE_STEPS = [
     body: "折线越高，那次记录里的情绪越强。0–10 是把你选的 1–5 档换算成的视觉高度，不是测评分数。",
   },
   {
-    title: "2 · 看圆点颜色",
-    body: "每个圆点是一次记录，颜色＝当时最主导的情绪，可在右侧色卡对照。",
+    title: "2 · 看圆点与彩环",
+    body: "每个圆点是一次记录，圆点颜色＝当时最主导的情绪；外面的彩环按序列出当次选中的每个情绪，可在右侧色卡对照。",
   },
   {
     title: "3 · 看虚线和标记",
@@ -150,7 +150,8 @@ export function ResonanceGuideBar({
 /** Hover card shown anywhere over the complex chart's time axis. */
 export function SliceHoverCard({ slice }: { slice: ResonanceSlice }) {
   const coh = `${slice.coherence > 0 ? "+" : ""}${slice.coherence}`;
-  const emotions = slice.emotions.slice(0, 3);
+  // Show every feeling on this slice, including custom ones.
+  const emotions = slice.emotions;
   return (
     <div className="res-hover-inner">
       <div className="res-hover-time">{axisDateTime(slice.t)}</div>
@@ -184,7 +185,7 @@ export function SliceHoverCard({ slice }: { slice: ResonanceSlice }) {
       {emotions.length > 0 ? (
         <div className="res-hover-emotions">
           {emotions.map((e) => (
-            <span key={e.tag}>
+            <span key={e.key}>
               <i style={{ background: e.color }} />
               {e.label}
             </span>
@@ -253,12 +254,15 @@ export function ResonanceLegend({
   selectedSliceInfo,
 }: ResonanceLegendProps) {
   const colors = useMemo(() => {
-    const map = new Map<string, { label: string; color: string; hits: number }>();
+    const map = new Map<
+      string,
+      { key: string; label: string; color: string; hits: number }
+    >();
     for (const slice of series.slices) {
       for (const e of slice.emotions) {
-        const prev = map.get(e.tag);
+        const prev = map.get(e.key);
         if (prev) prev.hits += 1;
-        else map.set(e.tag, { label: e.label, color: e.color, hits: 1 });
+        else map.set(e.key, { key: e.key, label: e.label, color: e.color, hits: 1 });
       }
     }
     return [...map.values()].sort((a, b) => b.hits - a.hits);
@@ -297,7 +301,7 @@ export function ResonanceLegend({
             <LegendRow
               icon={dotIcon("#5b8def")}
               label="圆点 · 一次记录"
-              body="颜色是当时最主导的情绪，点击可打开原记录。"
+              body="圆点是主导情绪，外面一圈彩环按序列出当次选中的每个情绪；线色是它们的混合。点击可打开原记录。"
             />
           </>
         ) : (
@@ -305,7 +309,7 @@ export function ResonanceLegend({
             <LegendRow
               icon={lineIcon("#9aa0a6", 2.4)}
               label="粗线 · 相干度"
-              body="整体走势：越高越自洽，越低越拉扯；颜色是当时最主导的情绪。"
+              body="整体走势：越高越自洽，越低越拉扯；线色由当次所有情绪按强度混合，每种情绪另有一条彩色细线。"
             />
             <LegendRow
               icon={
@@ -371,7 +375,7 @@ export function ResonanceLegend({
           <div className="res-legend-title">本图出现的情绪色</div>
           <div className="res-legend-colors">
             {colors.map((c) => (
-              <span className="res-legend-color" key={c.label}>
+              <span className="res-legend-color" key={c.key}>
                 <i style={{ background: c.color }} />
                 {c.label}
               </span>

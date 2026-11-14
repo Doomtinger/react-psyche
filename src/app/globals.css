@@ -409,6 +409,14 @@ textarea.text-input {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* 其他 has no preset imagery: show an explicit "choose any" glyph. */
+.imagery-glyph-any {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-faint);
+  user-select: none;
+}
 .imagery-dialog {
   display: flex;
   flex-direction: column;
@@ -1938,6 +1946,9 @@ input[type="color"].color-picker::-webkit-color-swatch {
   .imagery-glyph-btn {
     width: 44px;
     height: 44px;
+  }
+  .imagery-glyph-any {
+    font-size: 18px;
   }
   .imagery-scene {
     min-height: 190px;

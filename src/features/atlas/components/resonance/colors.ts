@@ -60,8 +60,47 @@ function hslToHex({ h, s, l }: Hsl): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace("#", "");
+  const full =
+    clean.length === 3
+      ? clean.split("").map((c) => c + c).join("")
+      : clean;
+  if (full.length !== 6 || /[^0-9a-f]/i.test(full)) return [154, 160, 166];
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ];
+}
+
 /**
- * Dominant-emotion color adjusted by coherence:
+ * Blend every emotion on a slice into one envelope colour, weighted by its
+ * strength. The dominant feeling still leads, but no selected tag is ignored.
+ */
+export function mixEmotionColors(
+  entries: { color: string; weight: number }[]
+): string {
+  if (entries.length === 0) return "#9aa0a6";
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let total = 0;
+  for (const { color, weight } of entries) {
+    const w = Math.max(0, weight) + 0.05;
+    const [cr, cg, cb] = hexToRgb(color);
+    r += cr * w;
+    g += cg * w;
+    b += cb * w;
+    total += w;
+  }
+  const channel = (v: number) =>
+    Math.round(v / total).toString(16).padStart(2, "0");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
+}
+
+/**
+ * Slice emotion mix adjusted by coherence:
  * - resonant (towards +1): softer saturation, slightly lighter (柔和通透)
  * - conflict (towards -1): lower saturation, darker (压低、暗沉)
  */

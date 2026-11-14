@@ -43,4 +43,16 @@ describe("recordToAtlasNode", () => {
     ]);
     expect(nodes[0].position[0]).toBeLessThan(nodes[1].position[0]);
   });
+
+  it("carries every chosen feeling's key and color onto the node", () => {
+    const record: MoodRecord = {
+      ...rec("a", "2026-01-01T10:00:00.000Z", 3, ["calm", "happy"]),
+      customEmotions: [{ key: "custom:x", label: "空落落", color: "#123456" }],
+    };
+    const node = recordToAtlasNode([record])[0];
+    expect(node.emotionKeys).toEqual(["calm", "happy", "custom:x"]);
+    expect(node.emotionColors).toHaveLength(3);
+    expect(node.emotionColors[2]).toBe("#123456");
+    expect(node.color).toBe(node.emotionColors[0]);
+  });
 });

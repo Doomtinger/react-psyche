@@ -1,12 +1,11 @@
 "use client";
 
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
 import type { AtlasNode } from "../../adapters/recordToAtlasNode";
 
 interface LandscapeNodesProps {
   nodes: AtlasNode[];
   selectedId: string | null;
-  highlightEmotion: EmotionTag | null;
+  highlightEmotion: string | null;
   onSelect: (recordId: string) => void;
 }
 
@@ -22,7 +21,7 @@ export function LandscapeNodes({
       {nodes.map((node) => {
         const dim =
           highlightEmotion !== null &&
-          !node.emotions.includes(highlightEmotion);
+          !node.emotionKeys.includes(highlightEmotion);
         const selected = selectedId === node.recordId;
         return (
           <mesh
@@ -51,6 +50,28 @@ export function LandscapeNodes({
               roughness={0.4}
               metalness={0.1}
             />
+            {node.emotionColors.slice(1).map((color, i, all) => {
+              const angle = (i / all.length) * Math.PI * 2;
+              return (
+                <mesh
+                  key={`${node.id}-emo-${i}`}
+                  position={[
+                    Math.cos(angle) * 0.48,
+                    Math.sin(angle) * 0.48,
+                    0.1,
+                  ]}
+                >
+                  <sphereGeometry args={[0.1, 10, 10]} />
+                  <meshStandardMaterial
+                    color={color}
+                    emissive={color}
+                    emissiveIntensity={dim ? 0.1 : 0.8}
+                    transparent
+                    opacity={dim ? 0.22 : 1}
+                  />
+                </mesh>
+              );
+            })}
           </mesh>
         );
       })}

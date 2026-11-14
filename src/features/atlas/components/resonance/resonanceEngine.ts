@@ -1,15 +1,16 @@
 import { EMOTION_TAGS, type EmotionTag, type MoodRecord } from "@/domain/entities/MoodRecord";
 import { EMOTION_OPTIONS } from "@/features/records/types";
+import { displayEmotions } from "@/features/records/customEmotions";
 import { emotionColor } from "@/shared/constants/emotions";
 import {
   ACCEPTANCE_WORDS,
-  AMBIGUOUS_TAGS,
   EMOTION_KEYWORDS,
   NEGATIVE_TAGS,
   NUMBNESS_WORDS,
   POSITIVE_TAGS,
   STRONG_EVENT_WORDS,
   SUPPRESSION_WORDS,
+  UNRESOLVED_TAGS,
 } from "./lexicon";
 import type {
   ResonanceSeries,
@@ -44,8 +45,11 @@ import type {
 
 const TAU = Math.PI * 2;
 
-/** Sub-wave cap per slice; extra emotions are folded into the weakest wave. */
-export const MAX_SUB_WAVES = 5;
+/**
+ * One wave per distinct feeling: 9 built-in tags + up to 5 custom tags,
+ * plus inner-voice waves. Only exceeded for pathological records.
+ */
+export const MAX_SUB_WAVES = 14;
 /** Above this record count the timeline is downsampled for performance. */
 export const DOWNSAMPLE_THRESHOLD = 90;
 export const MAX_SLICES = 90;
@@ -53,7 +57,10 @@ export const MAX_SLICES = 90;
 /** A gap starts to register after this much silence between anchors. */
 export const SPARSE_GAP_MS = 48 * 60 * 60 * 1000;
 
-const STRENGTH_DECAY = [1, 0.7, 0.55, 0.42, 0.32, 0.25] as const;
+const STRENGTH_DECAY = [
+  1, 0.7, 0.55, 0.42, 0.32, 0.25, 0.2, 0.16, 0.13, 0.11, 0.09, 0.08, 0.07,
+  0.06,
+] as const;
 const KEYWORD_BOOST = 1.3;
 const GOLDEN_ANGLE = 2.399963229728653;
 
@@ -78,6 +85,7 @@ export const PERTURBATION_LABELS: Record<string, string> = {
 };
 
 interface EmoStrength {
+  key: string;
   tag: EmotionTag;
   label: string;
   color: string;
@@ -108,13 +116,14 @@ function emotionLabel(tag: EmotionTag): string {
   return EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
 }
 
-function makeEmo(tag: EmotionTag, raw: number): EmoStrength {
-  return {
-    tag,
-    label: emotionLabel(tag),
-    color: emotionColor(tag),
-    raw: round2(clamp(raw, 0, 10)),
-  };
+function makeEmo(
+  key: string,
+  tag: EmotionTag,
+  raw: number,
+  label = emotionLabel(tag),
+  color = emotionColor(tag)
+): EmoStrength {
+  return { key, tag, label, color, raw: round2(clamp(raw, 0, 10)) };
 }
 
 function countDistinctWords(text: string, words: readonly string[]): number {
@@ -152,7 +161,8 @@ function inferTagsFromNote(note: string): EmotionTag[] {
   }
   scored.sort((a, b) => b.hits - a.hits);
   if (scored.length === 0) return ["other"];
-  return scored.slice(0, 2).map((s) => s.tag);
+  // Keep every inferred feeling instead of just the top two.
+  return scored.map((s) => s.tag);
 }
 
 /**
@@ -162,34 +172,44 @@ function inferTagsFromNote(note: string): EmotionTag[] {
  */
 function extractEmotions(record: MoodRecord, note: string): EmoStrength[] {
   const base = 2 + record.intensity * 1.6;
-  const tags =
-    record.emotions.length > 0 ? record.emotions : inferTagsFromNote(note);
 
-  const list: EmoStrength[] = tags.map((tag, idx) => {
-    const decay = STRENGTH_DECAY[idx] ?? 0.25;
+  // displayEmotions() already resolves custom tags into their own key/label/
+  // color and drops the placeholder "other" when custom tags exist. Using it
+  // here means every chosen feeling — built-in or custom — gets its own wave.
+  const inferred =
+    record.emotions.length > 0 ? null : inferTagsFromNote(note);
+  const seeds: {
+    key: string;
+    label: string;
+    color: string;
+    isCustom: boolean;
+  }[] = inferred
+    ? inferred.map((tag) => ({
+        key: tag,
+        label: emotionLabel(tag),
+        color: emotionColor(tag),
+        isCustom: false,
+      }))
+    : displayEmotions(record);
+
+  const list: EmoStrength[] = seeds.map((seed, idx) => {
+    const tag: EmotionTag = seed.isCustom
+      ? "other"
+      : (seed.key as EmotionTag);
+    const decay = STRENGTH_DECAY[idx] ?? 0.06;
     let raw = base * decay;
-    for (const keyword of EMOTION_KEYWORDS[tag] ?? []) {
-      if (keyword.length > 0 && note.includes(keyword)) raw += KEYWORD_BOOST;
+    if (!seed.isCustom) {
+      for (const keyword of EMOTION_KEYWORDS[tag] ?? []) {
+        if (keyword.length > 0 && note.includes(keyword)) raw += KEYWORD_BOOST;
+      }
     }
-    return makeEmo(tag, raw);
+    return makeEmo(seed.key, tag, raw, seed.label, seed.color);
   });
 
   list.sort((a, b) => b.raw - a.raw);
 
-  // Custom tags (其他 with a user-written label/color) keep their picked
-  // color here, so resonance waves and the envelope match the rest of the UI.
-  const customs = record.customEmotions ?? [];
-  if (customs.length > 0) {
-    for (const emo of list) {
-      if (emo.tag === "other") {
-        emo.label = customs[0].label;
-        emo.color = customs[0].color;
-      }
-    }
-  }
-
-  // Merge emotions beyond the sub-wave cap into the weakest kept wave, so the
-  // picture stays legible instead of dropping feelings silently.
+  // Only pathological records exceed the cap; fold the overflow into the
+  // weakest kept wave instead of dropping feelings silently.
   if (list.length > MAX_SUB_WAVES) {
     const kept = list.slice(0, MAX_SUB_WAVES);
     const overflow = list.slice(MAX_SUB_WAVES);
@@ -222,18 +242,23 @@ function coherenceOf(
 
   const hasPositive = emotions.some((e) => isPositive(e.tag));
   const hasNegative = emotions.some((e) => isNegative(e.tag));
-  const nonAmbiguous = emotions.filter(
-    (e) => !AMBIGUOUS_TAGS.includes(e.tag)
-  ).length;
+  // 困惑 / 其他 are neither positive nor negative, but they still carry
+  // visual weight: an "unintegrated layer" that slightly lowers coherence.
+  const hasUnresolved = emotions.some((e) => UNRESOLVED_TAGS.includes(e.tag));
+  // Every distinct feeling counts as a coexisting layer, including 困惑 /
+  // 其他. They don't force a positive or negative pull, but they do make the
+  // picture a "multi-layer mix" instead of being ignored.
+  const distinct = emotions.length;
 
   if (hasPositive && hasNegative) {
     // 对抗叠加：两种对立情绪共存
     value -= 0.32;
-  } else if (nonAmbiguous >= 2) {
+  } else if (distinct >= 2) {
     // 多层混合：多种不矛盾情绪共存
-    value += 0.18;
+    value += hasUnresolved ? 0.08 : 0.18;
   }
 
+  if (hasUnresolved) value -= 0.06;
   if (suppress > 0 && !hasPositive) value -= 0.06;
 
   return round2(clamp(value, -1, 1));
@@ -252,12 +277,13 @@ function perturbationOf(record: MoodRecord, note: string): SlicePerturbation {
     return { kind: "none", summary: "" };
   }
 
-  const primary = record.emotions[0];
+  // Look at the whole emotion vector, not just the first tag: a later
+  // 愤怒/开心 tag still colours the event's valence.
   let kind: SlicePerturbation["kind"];
   if (strong) {
-    kind = isNegative(primary) || primary === undefined
+    kind = record.emotions.some(isNegative)
       ? "strong-negative"
-      : isPositive(primary)
+      : record.emotions.some(isPositive)
         ? "strong-positive"
         : "weak";
   } else {
@@ -281,6 +307,16 @@ function basePhase(tagIndex: number, sliceIndex: number): number {
   );
 }
 
+/** Stable phase slot per feeling; custom keys never collide with built-ins. */
+function phaseKeyIndex(key: string, tag: EmotionTag): number {
+  if (key === tag) return Math.max(0, EMOTION_TAGS.indexOf(tag));
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  }
+  return EMOTION_TAGS.length + (Math.abs(hash) % 89);
+}
+
 function shortestAngleDiff(angle: number): number {
   let a = angle % TAU;
   if (a > Math.PI) a -= TAU;
@@ -302,6 +338,7 @@ function assembleSlice(
   excerpt: string
 ): ResonanceSlice {
   const emotions: SliceEmotion[] = emotionsRaw.map((e) => ({
+    key: e.key,
     tag: e.tag,
     label: e.label,
     color: e.color,
@@ -323,8 +360,8 @@ function assembleSlice(
   }
 
   const phases = emotions.map((emo) => {
-    const layer = byWeakness.findIndex((e) => e.tag === emo.tag);
-    const tagIndex = Math.max(0, EMOTION_TAGS.indexOf(emo.tag));
+    const layer = byWeakness.findIndex((e) => e.key === emo.key);
+    const tagIndex = phaseKeyIndex(emo.key, emo.tag);
     const group = groupOf(emo, layer);
     return (
       basePhase(tagIndex, index) +
@@ -335,7 +372,7 @@ function assembleSlice(
   const primaryPhase = phases[0] ?? 0;
 
   function buildWave(emo: SliceEmotion, i: number): SubWave {
-    const layer = byWeakness.findIndex((e) => e.tag === emo.tag);
+    const layer = byWeakness.findIndex((e) => e.key === emo.key);
     const layerNorm = maxLayer === 0 ? 1 : layer / maxLayer;
     const group = groupOf(emo, layer);
     const phase = phases[i];
@@ -369,6 +406,9 @@ function assembleSlice(
     const voice = subWaves[0];
     subWaves.push({
       ...voice,
+      // Distinct key: otherwise buildEnvFrame's per-key map would let the
+      // inner voice overwrite its own parent wave's amplitude/phase.
+      key: `${voice.key}:voice`,
       layer: voice.layer + 1,
       group: voice.group === "opposing" ? "aligned" : "opposing",
       phase: round2(((voice.phase + Math.PI) % TAU) * 1000) / 1000,
@@ -496,7 +536,18 @@ function buildRawSlices(records: MoodRecord[]): RawSlice[] {
       perturbation: perturbationOf(record, note),
       numb: isNumb(note),
       eruption: false,
-      intensity: round2((emotions[0]?.raw ?? 0) / 10),
+      // Every feeling contributes to the slice's overall intensity: the
+      // vector length of all strengths, normalized so a single emotion keeps
+      // exactly its original 0..1 value.
+      intensity: round2(
+        clamp(
+          emotions.reduce((sum, e) => sum + e.raw, 0) /
+            Math.sqrt(Math.max(1, emotions.length)) /
+            10,
+          0,
+          1
+        )
+      ),
     };
   });
 }
@@ -552,14 +603,16 @@ export function buildResonanceSeries(records: MoodRecord[]): ResonanceSeries {
     } else {
       coherence =
         seeds.reduce((sum, s) => sum + s.coherence, 0) / seeds.length;
-      const byTag = new Map<EmotionTag, EmoStrength>();
+      // Merge by stable key, so several custom feelings (all tagged "other")
+      // don't collapse into one another during downsampling.
+      const byKey = new Map<string, EmoStrength>();
       for (const s of seeds) {
         for (const e of s.emotions) {
-          const prev = byTag.get(e.tag);
-          if (!prev || e.raw > prev.raw) byTag.set(e.tag, e);
+          const prev = byKey.get(e.key);
+          if (!prev || e.raw > prev.raw) byKey.set(e.key, e);
         }
       }
-      emotionsRaw = [...byTag.values()].sort((a, b) => b.raw - a.raw);
+      emotionsRaw = [...byKey.values()].sort((a, b) => b.raw - a.raw);
       if (emotionsRaw.length > MAX_SUB_WAVES) emotionsRaw = emotionsRaw.slice(0, MAX_SUB_WAVES);
       intensity = Math.max(...seeds.map((s) => s.intensity));
     }

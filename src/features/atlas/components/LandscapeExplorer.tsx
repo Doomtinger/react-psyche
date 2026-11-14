@@ -15,7 +15,11 @@ import { recordToAtlasNode } from "../adapters/recordToAtlasNode";
 import { deriveVisualState } from "../visualState";
 import { mapToVisualParameters } from "../visualParams";
 import { lastDaysRange } from "@/shared/utils/date";
-import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
+import type { MoodRecord } from "@/domain/entities/MoodRecord";
+import {
+  displayEmotions,
+  type EmotionChoice,
+} from "@/features/records/customEmotions";
 import type { LandscapeMode } from "./landscape/types";
 import { LandscapeScene } from "./landscape/LandscapeScene";
 import { LandscapeControls } from "./landscape/LandscapeControls";
@@ -33,7 +37,7 @@ export function LandscapeExplorer() {
   const [mode, setMode] = useState<LandscapeMode>("fluid");
   const [rangePreset, setRangePreset] = useState<RangePreset>("30d");
   const [playhead, setPlayhead] = useState(1);
-  const [highlightEmotion, setHighlightEmotion] = useState<EmotionTag | null>(
+  const [highlightEmotion, setHighlightEmotion] = useState<string | null>(
     null
   );
   const [forceStatic, setForceStatic] = useState(false);
@@ -98,6 +102,17 @@ export function LandscapeExplorer() {
     () => deriveVisualState(visibleRecords, range),
     [visibleRecords, range]
   );
+  // Every custom feeling in the selected range is a selectable highlight.
+  const extraEmotions = useMemo<EmotionChoice[]>(() => {
+    const map = new Map<string, EmotionChoice>();
+    for (const record of inRange) {
+      for (const emo of displayEmotions(record)) {
+        if (!emo.isCustom || map.has(emo.key)) continue;
+        map.set(emo.key, { key: emo.key, label: emo.label, color: emo.color });
+      }
+    }
+    return [...map.values()];
+  }, [inRange]);
   const visualParams = useMemo(
     () => mapToVisualParameters(visualState, reducedMotion),
     [visualState, reducedMotion]
@@ -163,6 +178,7 @@ export function LandscapeExplorer() {
             onPlayheadChange={setPlayhead}
             highlightEmotion={highlightEmotion}
             onHighlightChange={setHighlightEmotion}
+            extraEmotions={extraEmotions}
             reducedMotion={reducedMotion}
             onReducedMotionChange={setForceStatic}
             onResetView={resetView}

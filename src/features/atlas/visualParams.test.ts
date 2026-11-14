@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { mapToVisualParameters } from "./visualParams";
 import { deriveVisualState } from "./visualState";
+import { dominantColors } from "./colors";
+import { emotionColor } from "@/shared/constants/emotions";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
 
 function rec(id: string, recordedAt: string, intensity: 1 | 2 | 3 | 4 | 5, emotions: MoodRecord["emotions"]): MoodRecord {
@@ -57,5 +59,28 @@ describe("mapToVisualParameters", () => {
     const params = mapToVisualParameters(state, false);
     expect(params.colorA).toBe("#33405e");
     expect(params.colorB).toBe("#161d2e");
+  });
+});
+
+describe("dominantColors", () => {
+  it("lets the 3rd+ emotion influence the second field color", () => {
+    const two = dominantColors({ calm: 3, happy: 2 });
+    const three = dominantColors({ calm: 3, happy: 2, sad: 2 });
+    expect(two.a).toBe(emotionColor("calm"));
+    expect(three.a).toBe(two.a);
+    expect(two.b).toBe(emotionColor("happy"));
+    expect(three.b).not.toBe(two.b);
+  });
+
+  it("resolves custom tag colors supplied by the records", () => {
+    const result = dominantColors(
+      { calm: 3, "custom:x": 2 },
+      { "custom:x": "#123456" }
+    );
+    expect(result.b).toBe("#123456");
+  });
+
+  it("returns a neutral palette when there is no data", () => {
+    expect(dominantColors({})).toEqual({ a: "#33405e", b: "#161d2e" });
   });
 });

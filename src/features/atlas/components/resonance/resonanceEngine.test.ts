@@ -4,7 +4,9 @@ import {
   DOWNSAMPLE_THRESHOLD,
   MAX_SLICES,
 } from "./resonanceEngine";
-import type { MoodRecord } from "@/domain/entities/MoodRecord";
+import { EMOTION_TAGS, type MoodRecord } from "@/domain/entities/MoodRecord";
+import { buildEnvFrame, waveTagOrder } from "./chartFrame";
+import { mixEmotionColors } from "./colors";
 
 function rec(
   id: string,
@@ -150,5 +152,124 @@ describe("buildResonanceSeries", () => {
     expect(
       series.slices.reduce((sum, s) => sum + s.recordIds.length, 0)
     ).toBe(records.length);
+  });
+
+  it("gives every built-in tag, including 困惑 and 其他, its own wave", () => {
+    const series = buildResonanceSeries([
+      rec("a", "2026-02-01T10:00:00.000Z", 4, [...EMOTION_TAGS]),
+    ]);
+    const slice = series.slices[0];
+    expect(slice.emotions).toHaveLength(EMOTION_TAGS.length);
+    expect(slice.subWaves).toHaveLength(EMOTION_TAGS.length);
+    expect(new Set(slice.subWaves.map((w) => w.key))).toEqual(
+      new Set(EMOTION_TAGS)
+    );
+  });
+
+  it("lets 困惑 / 其他 affect coherence instead of being ignored", () => {
+    const calm = buildResonanceSeries([
+      rec("a", "2026-02-01T10:00:00.000Z", 3, ["calm"]),
+    ]);
+    const confused = buildResonanceSeries([
+      rec("b", "2026-02-01T10:00:00.000Z", 3, ["confused"]),
+    ]);
+    const other = buildResonanceSeries([
+      rec("c", "2026-02-01T10:00:00.000Z", 3, ["other"]),
+    ]);
+    expect(calm.slices[0].coherence).toBe(0);
+    expect(confused.slices[0].coherence).toBeLessThan(calm.slices[0].coherence);
+    expect(other.slices[0].coherence).toBeLessThan(calm.slices[0].coherence);
+  });
+
+  it("infers every mentioned feeling, including 其他, from an untagged note", () => {
+    const series = buildResonanceSeries([
+      rec(
+        "a",
+        "2026-02-01T10:00:00.000Z",
+        3,
+        [],
+        "很困惑，也有点难过，还有说不清的感觉"
+      ),
+    ]);
+    expect(series.slices[0].emotions.map((e) => e.key)).toEqual(
+      expect.arrayContaining(["confused", "sad", "other"])
+    );
+  });
+
+  it("keeps custom tags as separate waves with their own label and color", () => {
+    const record: MoodRecord = {
+      ...rec("a", "2026-02-01T10:00:00.000Z", 4, ["other"]),
+      customEmotions: [
+        { key: "custom:x", label: "空落落", color: "#123456" },
+        { key: "custom:y", label: "被看见", color: "#abcdef" },
+      ],
+    };
+    const slice = buildResonanceSeries([record]).slices[0];
+    expect(slice.emotions).toHaveLength(2);
+    expect(slice.subWaves).toHaveLength(2);
+    expect(slice.emotions.find((e) => e.key === "custom:x")).toMatchObject({
+      label: "空落落",
+      color: "#123456",
+      tag: "other",
+    });
+    expect(new Set(slice.subWaves.map((w) => w.key))).toEqual(
+      new Set(["custom:x", "custom:y"])
+    );
+
+    const frame = buildEnvFrame(buildResonanceSeries([record]));
+    expect(waveTagOrder(frame).sort()).toEqual(["custom:x", "custom:y"]);
+    expect(frame.waves[0].size).toBe(2);
+  });
+
+  it("counts every chosen feeling in slice intensity", () => {
+    const single = buildResonanceSeries([
+      rec("a", "2026-02-01T10:00:00.000Z", 2, ["calm"]),
+    ]);
+    const many = buildResonanceSeries([
+      rec("b", "2026-02-01T10:00:00.000Z", 2, ["calm", "happy", "excited"]),
+    ]);
+    expect(many.slices[0].intensity).toBeGreaterThan(
+      single.slices[0].intensity
+    );
+  });
+
+  it("mixes every emotion color, not just the dominant one", () => {
+    const mixed = mixEmotionColors([
+      { color: "#ff0000", weight: 9 },
+      { color: "#0000ff", weight: 1 },
+    ]);
+    expect(mixed).not.toBe("#ff0000");
+    expect(Number.parseInt(mixed.slice(1, 3), 16)).toBeGreaterThan(
+      Number.parseInt(mixed.slice(5, 7), 16)
+    );
+  });
+
+  it("does not merge distinct custom keys when downsampling", () => {
+    const records: MoodRecord[] = [];
+    for (let i = 0; i < DOWNSAMPLE_THRESHOLD + 10; i++) {
+      const day = String(Math.floor(i / 4) + 1).padStart(2, "0");
+      const hour = String(i % 4).padStart(2, "0");
+      const base = rec(
+        `r${i}`,
+        `2026-01-${day}T${hour}:00:00.000Z`,
+        3,
+        ["other"]
+      );
+      records.push(
+        i < 2
+          ? {
+              ...base,
+              customEmotions: [
+                { key: `custom:${i}`, label: `感受${i}`, color: "#123456" },
+              ],
+            }
+          : base
+      );
+    }
+    const series = buildResonanceSeries(records);
+    expect(series.meta.downsampled).toBe(true);
+    expect(series.slices[0].emotions.map((e) => e.key)).toEqual(
+      expect.arrayContaining(["custom:0", "custom:1"])
+    );
   });
 });

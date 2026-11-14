@@ -34,6 +34,7 @@ import type {
 } from "./types";
 
 interface WavePathData {
+  key: string;
   tag: EmotionTag;
   label: string;
   color: string;
@@ -134,7 +135,7 @@ interface ResonanceFlowProps {
   speed: number;
   reducedMotion: boolean;
   granularity: "day" | "week";
-  highlightEmotion: EmotionTag | null;
+  highlightEmotion: string | null;
   selectedSlice: number | null;
   onSelectSlice: (index: number | null) => void;
   /** Zoom by factor (<1 in) around an anchor time. */
@@ -161,7 +162,7 @@ function buildFlowView(
   series: ResonanceSeries,
   domain: TimeDomain,
   frame: EnvFrame,
-  highlightEmotion: EmotionTag | null,
+  highlightEmotion: string | null,
   granularity: "day" | "week",
   motion: number,
   animate: boolean
@@ -212,21 +213,28 @@ function buildFlowView(
     penUp = false;
   }
 
-  // Sub-waves: one independent strand per emotion / inner voice.
-  const tagColors = new Map<EmotionTag, string>();
+  // Sub-waves: one independent strand per emotion key / inner voice. Custom
+  // feelings keep their own key, label and color instead of collapsing into
+  // the generic "其他" tag.
+  const waveMeta = new Map<
+    string,
+    { color: string; label: string; tag: EmotionTag }
+  >();
   for (const slice of series.slices) {
     for (const w of slice.subWaves) {
-      if (!tagColors.has(w.tag)) tagColors.set(w.tag, w.color);
+      if (!waveMeta.has(w.key)) {
+        waveMeta.set(w.key, { color: w.color, label: w.label, tag: w.tag });
+      }
     }
   }
 
-  const tags = waveTagOrder(frame);
-  const waves: WavePathData[] = tags.map((tag) => {
+  const keys = waveTagOrder(frame);
+  const waves: WavePathData[] = keys.map((key) => {
     const parts: string[] = [];
     for (let i = 0; i <= sampleCount; i++) {
       const x = PAD_L + Math.min(PLOT_W, i * step);
       const t = tOf(x, domain);
-      const w = waveAt(frame, tag, t);
+      const w = waveAt(frame, key, t);
       const conflict = conflicts[i];
       const dirSign = w.dir < 0 ? -1 : 1;
       const effAmp = w.amp * (1 - gaps[i]) * sparses[i];
@@ -242,12 +250,16 @@ function buildFlowView(
         envY[i] + dirSign * effAmp * mod * AMPLITUDE_PX + jag;
       parts.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
     }
+    const meta = waveMeta.get(key);
     const matches =
-      highlightEmotion === null || highlightEmotion === tag;
+      highlightEmotion === null ||
+      highlightEmotion === meta?.tag ||
+      highlightEmotion === key;
     return {
-      tag,
-      label: emotionLabel(tag),
-      color: tagColors.get(tag) ?? "#9aa0a6",
+      key,
+      tag: meta?.tag ?? "other",
+      label: meta?.label ?? emotionLabel(meta?.tag ?? "other"),
+      color: meta?.color ?? "#9aa0a6",
       d: `M ${parts.join(" L ")}`,
       coreOpacity: matches ? 0.78 : 0.1,
       glowOpacity: matches ? 0.12 : 0.02,
@@ -582,7 +594,7 @@ export function ResonanceFlow({
       {/* Layers revealed by playback progress, bottom → top */}
       <g clipPath={`url(#${uid}-clip)`} data-progress-group="true">
         {view.waves.map((w) => (
-          <g key={w.tag}>
+          <g key={w.key}>
             <title>{`${w.label}：一股彩色细线代表一种情绪，离粗线越远表示这种情绪越强`}</title>
             <path
               d={w.d}
@@ -612,7 +624,7 @@ export function ResonanceFlow({
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <title>粗线＝相干度走势：越高越自洽，越低越拉扯。颜色是当时最主导的情绪。</title>
+          <title>粗线＝相干度走势：越高越自洽，越低越拉扯。颜色由当时所有情绪按强度混合。</title>
         </path>
         <SliceMarkers
           slices={series.slices}

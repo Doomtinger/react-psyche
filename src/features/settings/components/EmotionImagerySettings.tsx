@@ -8,6 +8,7 @@ import { Modal } from "@/shared/components/Modal";
 import { useReducedMotion } from "@/shared/utils/useReducedMotion";
 import {
   IMAGERY,
+  IMAGERY_IDS,
   PALETTE_LABELS,
   TAG_IMAGERY,
   type ImageryId,
@@ -36,6 +37,11 @@ export function EmotionImagerySettings({
   const spec = activeImagery ? IMAGERY[activeImagery] : null;
   const tagLabel =
     EMOTION_OPTIONS.find((o) => o.value === activeTag)?.label ?? "";
+  const choices = tagImagery?.chooseAny
+    ? IMAGERY_IDS
+    : tagImagery
+      ? [tagImagery.primary, ...tagImagery.related]
+      : [];
 
   function close() {
     setActiveTag(null);
@@ -50,7 +56,7 @@ export function EmotionImagerySettings({
           每个情绪标签对应一幅具像化的图景。点击标签旁的小图案，看看这份感受长什么样。图景只作感受表达，不是测评结论。
         </p>
         <div className="imagery-tag-list" role="list" aria-label="情绪标签意象">
-          {TAG_IMAGERY.map(({ tag, primary }) => {
+          {TAG_IMAGERY.map(({ tag, primary, chooseAny }) => {
             const label =
               EMOTION_OPTIONS.find((o) => o.value === tag)?.label ?? tag;
             const imagery = IMAGERY[primary];
@@ -62,18 +68,32 @@ export function EmotionImagerySettings({
                   aria-hidden="true"
                 />
                 <span className="imagery-tag-name">{label}</span>
-                <span className="imagery-tag-state">{imagery.name}</span>
+                <span className="imagery-tag-state">
+                  {chooseAny ? "未预设 · 可任选" : imagery.name}
+                </span>
                 <button
                   type="button"
                   className="imagery-glyph-btn"
-                  aria-label={`查看「${label}」的意象：${imagery.name}`}
-                  title={`查看「${imagery.name}」的具像化图形`}
+                  aria-label={
+                    chooseAny
+                      ? `查看「${label}」的意象：任选一种图景`
+                      : `查看「${label}」的意象：${imagery.name}`
+                  }
+                  title={
+                    chooseAny
+                      ? "没有预设意象，打开后可挑选任意一种图景"
+                      : `查看「${imagery.name}」的具像化图形`
+                  }
                   onClick={() => {
                     setActiveTag(tag);
                     setActiveImagery(primary);
                   }}
                 >
-                  <ImageryGlyph id={primary} size={22} />
+                  {chooseAny ? (
+                    <span className="imagery-glyph-any" aria-hidden="true">?</span>
+                  ) : (
+                    <ImageryGlyph id={primary} size={22} />
+                  )}
                 </button>
               </div>
             );
@@ -90,9 +110,19 @@ export function EmotionImagerySettings({
           <div className="imagery-dialog">
             <EmotionImageryScene id={spec.id} reducedMotion={still} />
 
-            {tagImagery && tagImagery.related.length > 0 ? (
-              <div className="imagery-switch" role="group" aria-label="相关意象">
-                {[tagImagery.primary, ...tagImagery.related].map((id) => (
+            {tagImagery?.chooseAny ? (
+              <p className="imagery-note">
+                「其他 / 难以归类」没有预设意象，可以从下面 {IMAGERY_IDS.length} 种图景里挑一种来看。
+              </p>
+            ) : null}
+
+            {choices.length > 1 ? (
+              <div
+                className="imagery-switch"
+                role="group"
+                aria-label={tagImagery?.chooseAny ? "任选意象" : "相关意象"}
+              >
+                {choices.map((id) => (
                   <button
                     key={id}
                     type="button"

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppError } from "@/domain/repositories/AppError";
-import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
+import { EMOTION_TAGS, type MoodRecord } from "@/domain/entities/MoodRecord";
+import type { EmotionChoice } from "@/features/records/customEmotions";
 import { Spinner } from "@/shared/components/Spinner";
 import { useReducedMotion } from "@/shared/utils/useReducedMotion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -88,7 +89,7 @@ export function ResonanceFlowView({
   const [progress, setProgress] = useState(1);
   const [speed, setSpeed] = useState(1);
   const [granularity, setGranularity] = useState<"day" | "week">("day");
-  const [highlightEmotion, setHighlightEmotion] = useState<EmotionTag | null>(
+  const [highlightEmotion, setHighlightEmotion] = useState<string | null>(
     null
   );
   const [zoom, setZoom] = useState<TimeDomain | null>(null);
@@ -113,6 +114,20 @@ export function ResonanceFlowView({
   const progressRef = useRef(1);
 
   const series = useMemo(() => buildResonanceSeries(records), [records]);
+  // Custom feelings get their own highlight chip, so every wave drawn in the
+  // chart can also be inspected on its own.
+  const extraEmotions = useMemo<EmotionChoice[]>(() => {
+    const map = new Map<string, EmotionChoice>();
+    for (const slice of series.slices) {
+      for (const e of slice.emotions) {
+        if ((EMOTION_TAGS as readonly string[]).includes(e.key)) continue;
+        if (!map.has(e.key)) {
+          map.set(e.key, { key: e.key, label: e.label, color: e.color });
+        }
+      }
+    }
+    return [...map.values()];
+  }, [series]);
   const full = useMemo(() => fullDomainOf(series), [series]);
   const domain = zoom ?? full;
 
@@ -350,6 +365,7 @@ export function ResonanceFlowView({
         onResetView={handleResetView}
         highlightEmotion={highlightEmotion}
         onHighlightChange={setHighlightEmotion}
+        extraEmotions={extraEmotions}
         reducedMotion={reducedMotion}
         onReducedMotionChange={setForceStatic}
         watermark={watermark}

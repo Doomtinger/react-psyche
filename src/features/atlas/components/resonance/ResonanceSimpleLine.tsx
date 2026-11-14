@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useMemo } from "react";
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
 import {
   axisDate,
   axisDateTime,
@@ -25,7 +24,7 @@ interface ResonanceSimpleLineProps {
   series: ResonanceSeries;
   domain: TimeDomain;
   granularity: "day" | "week";
-  highlightEmotion: EmotionTag | null;
+  highlightEmotion: string | null;
   selectedSlice: number | null;
   onSelectSlice: (index: number | null) => void;
   /** Enlarge tap targets on phones. */
@@ -97,7 +96,7 @@ export function ResonanceSimpleLine({
       viewBox={`0 0 ${CHART_W} ${CHART_H}`}
       className="resonance-svg"
       role="img"
-      aria-label={`简易情绪折线图：${series.meta.sliceCount} 个时间切片。横轴为时间，纵轴为情绪强度 0 到 10；圆点颜色代表当时的主导情绪，点击圆点可查看原始记录。`}
+      aria-label={`简易情绪折线图：${series.meta.sliceCount} 个时间切片。横轴为时间，纵轴为情绪强度 0 到 10；圆点外的彩环列出当时所有情绪，点击圆点可查看原始记录。`}
     >
       <defs>
         <linearGradient
@@ -189,16 +188,23 @@ export function ResonanceSimpleLine({
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <title>实线＝情绪强度走势，越高表示那次记录的情绪越强；颜色是当时最主导的情绪</title>
+        <title>实线＝情绪强度走势，越高表示那次记录的情绪越强；线色由当时所有情绪混合，圆点外的彩环列出每一个情绪</title>
       </path>
 
       {series.slices.map((slice) => {
+        // A later tag still counts as "present": highlighting 疲惫 must not
+        // dim a slice where 疲惫 is the second chosen feeling.
         const dimmed =
           highlightEmotion !== null &&
-          slice.emotions[0]?.tag !== highlightEmotion;
+          !slice.emotions.some(
+            (e) => e.tag === highlightEmotion || e.key === highlightEmotion
+          );
         const selected = selectedSlice === slice.index;
         const cx = xOf(slice.t, domain);
         const cy = yOfNorm(slice.intensity);
+        const ringR = isMobile ? 12 : 9;
+        const circumference = 2 * Math.PI * ringR;
+        const segment = circumference / Math.max(1, slice.emotions.length);
         return (
           <g key={slice.index}>
             <circle
@@ -214,6 +220,25 @@ export function ResonanceSimpleLine({
             >
               <title>{dotTooltip(slice)}</title>
             </circle>
+            {/* Multi-colour ring: every chosen feeling gets its own arc. */}
+            {slice.emotions.length > 1
+              ? slice.emotions.map((e, i) => (
+                  <circle
+                    key={e.key}
+                    cx={cx}
+                    cy={cy}
+                    r={ringR}
+                    fill="none"
+                    stroke={e.color}
+                    strokeWidth={isMobile ? 3 : 2.4}
+                    strokeDasharray={`${segment} ${circumference - segment}`}
+                    strokeDashoffset={-i * segment}
+                    transform={`rotate(-90 ${cx} ${cy})`}
+                    opacity={slice.isGap || dimmed ? 0.3 : 0.95}
+                    pointerEvents="none"
+                  />
+                ))
+              : null}
             {isMobile ? (
               <circle
                 cx={cx}

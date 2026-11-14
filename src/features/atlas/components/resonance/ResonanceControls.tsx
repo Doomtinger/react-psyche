@@ -4,7 +4,7 @@ import { useState } from "react";
 import { EMOTION_OPTIONS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
 import { cn } from "@/shared/utils/cn";
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
+import type { EmotionChoice } from "@/features/records/customEmotions";
 
 interface ResonanceControlsProps {
   simpleView: boolean;
@@ -20,8 +20,11 @@ interface ResonanceControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetView: () => void;
-  highlightEmotion: EmotionTag | null;
-  onHighlightChange: (emotion: EmotionTag | null) => void;
+  /** Built-in tag or a custom-emotion key. */
+  highlightEmotion: string | null;
+  onHighlightChange: (emotion: string | null) => void;
+  /** Custom feelings present in the current series, also selectable. */
+  extraEmotions?: EmotionChoice[];
   reducedMotion: boolean;
   onReducedMotionChange: (value: boolean) => void;
   watermark: boolean;
@@ -57,6 +60,7 @@ export function ResonanceControls({
   onResetView,
   highlightEmotion,
   onHighlightChange,
+  extraEmotions = [],
   reducedMotion,
   onReducedMotionChange,
   watermark,
@@ -67,6 +71,15 @@ export function ResonanceControls({
   isMobile,
 }: ResonanceControlsProps) {
   const [expanded, setExpanded] = useState(false);
+  // Built-in tags plus the custom feelings that actually appear in the series.
+  const chips: EmotionChoice[] = [
+    ...EMOTION_OPTIONS.map((o) => ({
+      key: o.value,
+      label: o.label,
+      color: emotionColor(o.value),
+    })),
+    ...extraEmotions,
+  ];
   // Only phones collapse controls; desktop keeps every control visible.
   const collapsed = isMobile && !expanded;
   const hide = (base: string) => cn(base, collapsed && "is-mobile-collapsed");
@@ -194,21 +207,18 @@ export function ResonanceControls({
       <div className={hide("landscape-control-block")}>
         <span className="landscape-control-label" title="选中后只突出这种情绪对应的细线／圆点，其他会淡化">情绪高亮</span>
         <div className="filter-group" role="group" aria-label="情绪高亮">
-          {EMOTION_OPTIONS.map((opt) => {
-            const active = highlightEmotion === opt.value;
+          {chips.map((opt) => {
+            const active = highlightEmotion === opt.key;
             return (
               <button
-                key={opt.value}
+                key={opt.key}
                 type="button"
                 className={cn("filter-chip", active && "active")}
                 aria-pressed={active}
-                onClick={() => onHighlightChange(active ? null : opt.value)}
+                onClick={() => onHighlightChange(active ? null : opt.key)}
                 style={
                   active
-                    ? {
-                        borderColor: emotionColor(opt.value),
-                        color: emotionColor(opt.value),
-                      }
+                    ? { borderColor: opt.color, color: opt.color }
                     : undefined
                 }
               >

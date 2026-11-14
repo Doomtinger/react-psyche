@@ -39,6 +39,29 @@ export function RecordNode({ node, selected, onSelect }: RecordNodeProps) {
         roughness={0.4}
         metalness={0.1}
       />
+      {/* Satellite dots: every other chosen feeling keeps its own color. */}
+      {node.emotionColors.slice(1).map((color, i, all) => {
+        const angle = (i / all.length) * Math.PI * 2;
+        const radius = 0.72;
+        return (
+          <mesh
+            key={`${node.id}-emo-${i}`}
+            position={[
+              Math.cos(angle) * radius,
+              Math.sin(angle) * radius,
+              0.12,
+            ]}
+          >
+            <sphereGeometry args={[0.13, 10, 10]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={color}
+              emissiveIntensity={0.8}
+              roughness={0.4}
+            />
+          </mesh>
+        );
+      })}
     </mesh>
   );
 }

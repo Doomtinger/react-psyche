@@ -1,5 +1,4 @@
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
-import { shadeForCoherence } from "./colors";
+import { mixEmotionColors, shadeForCoherence } from "./colors";
 import { SPARSE_GAP_MS } from "./resonanceEngine";
 import type { ResonanceSeries, ResonanceSlice, TimeDomain } from "./types";
 
@@ -57,7 +56,8 @@ export interface EnvFrame {
   ts: number[];
   cohs: number[];
   gaps: number[];
-  waves: Map<EmotionTag, WaveIndexParams>[];
+  /** Keyed by the stable emotion key, not the built-in tag. */
+  waves: Map<string, WaveIndexParams>[];
   slices: ResonanceSlice[];
 }
 
@@ -65,9 +65,9 @@ export interface EnvFrame {
 export function buildEnvFrame(series: ResonanceSeries): EnvFrame {
   const slices = series.slices;
   const waves = slices.map((slice) => {
-    const m = new Map<EmotionTag, WaveIndexParams>();
+    const m = new Map<string, WaveIndexParams>();
     for (const w of slice.subWaves) {
-      m.set(w.tag, {
+      m.set(w.key, {
         amp: w.amplitude,
         phase: w.phase,
         dir: w.group === "opposing" ? -1 : 1,
@@ -151,17 +151,17 @@ export function envAt(frame: EnvFrame, t: number): EnvSample {
 
 export function waveAt(
   frame: EnvFrame,
-  tag: EmotionTag,
+  key: string,
   t: number
 ): WaveIndexParams {
   const n = frame.ts.length;
   const fallback: WaveIndexParams = { amp: 0, phase: 0, dir: 1 };
   if (n === 0) return fallback;
-  if (n === 1) return frame.waves[0].get(tag) ?? fallback;
+  if (n === 1) return frame.waves[0].get(key) ?? fallback;
   const i = bracketIndex(frame, t);
   const j = Math.min(i + 1, n - 1);
-  const a = frame.waves[i].get(tag);
-  const b = frame.waves[j].get(tag);
+  const a = frame.waves[i].get(key);
+  const b = frame.waves[j].get(key);
   if (!a && !b) return fallback;
   if (i === j) return a ?? b ?? fallback;
   const span = frame.ts[j] - frame.ts[i];
@@ -175,15 +175,15 @@ export function waveAt(
   };
 }
 
-/** Unique emotion tags across the series, strongest first. */
-export function waveTagOrder(frame: EnvFrame): EmotionTag[] {
-  const best = new Map<EmotionTag, number>();
+/** Unique emotion keys across the series, strongest first. */
+export function waveTagOrder(frame: EnvFrame): string[] {
+  const best = new Map<string, number>();
   for (const map of frame.waves) {
-    for (const [tag, params] of map) {
-      best.set(tag, Math.max(best.get(tag) ?? 0, params.amp));
+    for (const [key, params] of map) {
+      best.set(key, Math.max(best.get(key) ?? 0, params.amp));
     }
   }
-  return [...best.entries()].sort((x, y) => y[1] - x[1]).map(([tag]) => tag);
+  return [...best.entries()].sort((x, y) => y[1] - x[1]).map(([key]) => key);
 }
 
 export interface GradientStop {
@@ -192,8 +192,9 @@ export interface GradientStop {
 }
 
 /**
- * Horizontal gradient for the envelope line: dominant emotion color per slice,
- * shaded by that slice's coherence (柔和 in resonance, 暗沉 in conflict).
+ * Horizontal gradient for the envelope line: all of a slice's emotion colors
+ * blended by strength, shaded by that slice's coherence (柔和 in resonance,
+ * 暗沉 in conflict). No selected tag is left out of the envelope colour.
  */
 export function buildDominantStops(
   series: ResonanceSeries,
@@ -210,13 +211,20 @@ export function buildDominantStops(
       last = off;
     }
   };
-  push(0, shadeForCoherence(slices[0].emotions[0]?.color ?? "#9aa0a6", slices[0].coherence));
+  const colorOf = (slice: ResonanceSlice) =>
+    shadeForCoherence(
+      mixEmotionColors(
+        slice.emotions.map((e) => ({
+          color: e.color,
+          weight: e.strengthRaw,
+        }))
+      ),
+      slice.coherence
+    );
+  push(0, colorOf(slices[0]));
   for (const slice of slices) {
     const off = (xOf(slice.t, domain) - PAD_L) / PLOT_W;
-    push(
-      off,
-      shadeForCoherence(slice.emotions[0]?.color ?? "#9aa0a6", slice.coherence)
-    );
+    push(off, colorOf(slice));
   }
   return stops;
 }

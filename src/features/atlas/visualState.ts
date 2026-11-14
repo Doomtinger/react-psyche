@@ -1,10 +1,14 @@
-import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
+import type { MoodRecord } from "@/domain/entities/MoodRecord";
 import { localDayKey } from "@/shared/utils/date";
 import { displayEmotions } from "@/features/records/customEmotions";
 
 export interface VisualCluster {
   id: string;
-  emotion: EmotionTag;
+  /** Built-in tag or custom-tag key. */
+  emotion: string;
+  /** Resolved color; custom tags use the color picked in the form. */
+  color: string;
+  /** A record with several feelings belongs to several clusters. */
   recordIds: string[];
   strength: number;
 }
@@ -53,23 +57,20 @@ export function deriveVisualState(
   const customColors: Record<string, string> = {};
   const intensities: number[] = [];
   const daysWithRecords = new Set<string>();
-  const byPrimaryEmotion = new Map<EmotionTag, string[]>();
+  const byEmotion = new Map<string, { ids: string[]; color: string }>();
 
   for (const record of records) {
-    // Count on the display layer so custom tags (其他 + user label/color)
-    // appear with their own identity instead of collapsing into 其他.
+    // One cluster per *every* chosen feeling, not just the first one. Custom
+    // tags keep their own identity and color instead of collapsing into 其他.
     for (const emo of displayEmotions(record)) {
       distribution[emo.key] = (distribution[emo.key] ?? 0) + 1;
       if (emo.isCustom) customColors[emo.key] = emo.color;
+      const entry = byEmotion.get(emo.key) ?? { ids: [], color: emo.color };
+      entry.ids.push(record.id);
+      byEmotion.set(emo.key, entry);
     }
     intensities.push(record.intensity);
     daysWithRecords.add(localDayKey(record.recordedAt));
-    const primary = record.emotions[0];
-    if (primary) {
-      const list = byPrimaryEmotion.get(primary) ?? [];
-      list.push(record.id);
-      byPrimaryEmotion.set(primary, list);
-    }
   }
 
   const recordCount = records.length;
@@ -90,12 +91,13 @@ export function deriveVisualState(
     recordCount / (daysInRange * DENSITY_REFERENCE_PER_DAY)
   );
 
-  const clusters: VisualCluster[] = [...byPrimaryEmotion.entries()]
-    .map(([emotion, recordIds]) => ({
+  const clusters: VisualCluster[] = [...byEmotion.entries()]
+    .map(([emotion, { ids, color }]) => ({
       id: `cluster-${emotion}`,
       emotion,
-      recordIds,
-      strength: recordIds.length,
+      color,
+      recordIds: ids,
+      strength: ids.length,
     }))
     .sort((a, b) => b.strength - a.strength);
 

@@ -16,6 +16,13 @@ import type { EmotionTag } from "@/domain/entities/MoodRecord";
 export type WaveGroup = "aligned" | "opposing";
 
 export interface SliceEmotion {
+  /**
+   * Stable identity of this feeling. Built-in tags use the tag itself; custom
+   * emotions use their own key. All wave grouping/lookup uses this instead of
+   * `tag`, so several custom feelings (all tagged "other") stay distinct.
+   */
+  key: string;
+  /** Built-in taxonomy tag; custom emotions resolve to "other" here. */
   tag: EmotionTag;
   label: string;
   /** Shared emotion color library (same as the single-sentence pipeline). */
@@ -69,9 +76,9 @@ export interface ResonanceSlice {
   trend: SliceTrend;
   /** Normalized 0..1 overall emotional intensity of the slice. */
   intensity: number;
-  /** Explicit emotion vector (multi-label allowed, capped at 5). */
+  /** Explicit emotion vector: every built-in and custom tag on the record. */
   emotions: SliceEmotion[];
-  /** Parallel sub-waves (one per emotion/inner voice, capped at 5). */
+  /** Parallel sub-waves, one per distinct emotion key (plus inner voices). */
   subWaves: SubWave[];
   perturbation: SlicePerturbation;
   /** True → numbness gap: envelope breaks, sub-waves fade out. */

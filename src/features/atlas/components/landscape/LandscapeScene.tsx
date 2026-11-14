@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
 import type { AtlasNode } from "../../adapters/recordToAtlasNode";
 import type { VisualCluster } from "../../visualState";
 import type { VisualParameters } from "../../visualParams";
@@ -21,7 +20,7 @@ interface LandscapeSceneProps {
   clusters: VisualCluster[];
   reducedMotion: boolean;
   selectedId: string | null;
-  highlightEmotion: EmotionTag | null;
+  highlightEmotion: string | null;
   onSelect: (recordId: string) => void;
   resetKey: number;
 }

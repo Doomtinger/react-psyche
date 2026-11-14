@@ -37,10 +37,9 @@ export function recordToAtlasNode(records: MoodRecord[]): AtlasNode[] {
       isCustom: false,
     };
     const primaryTag = record.emotions[0] ?? "other";
-    const laneIndex = Math.max(
-      0,
-      EMOTION_OPTIONS.findIndex((o) => o.value === primaryTag)
-    );
+    const foundLane = EMOTION_OPTIONS.findIndex((o) => o.value === primaryTag);
+    // Unknown/legacy tags belong in the 其他 lane, never silently in 平静.
+    const laneIndex = foundLane >= 0 ? foundLane : laneCount - 1;
 
     const x =
       n <= 1 ? 0 : (i / (n - 1) - 0.5) * Math.max(8, n * 1.6);
@@ -55,6 +54,8 @@ export function recordToAtlasNode(records: MoodRecord[]): AtlasNode[] {
       label: primary.label,
       recordedAt: record.recordedAt,
       emotions: record.emotions,
+      emotionColors: display.map((e) => e.color),
+      emotionKeys: display.map((e) => e.key),
     };
   });
 }

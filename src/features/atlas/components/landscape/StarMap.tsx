@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 import { Line } from "@react-three/drei";
-import type { EmotionTag } from "@/domain/entities/MoodRecord";
-import { emotionColor } from "@/shared/constants/emotions";
 import type { AtlasNode } from "../../adapters/recordToAtlasNode";
 import type { VisualCluster } from "../../visualState";
 import { LandscapeNodes } from "./LandscapeNodes";
@@ -13,7 +11,7 @@ interface StarMapProps {
   clusters: VisualCluster[];
   clusterVisibility: number;
   selectedId: string | null;
-  highlightEmotion: EmotionTag | null;
+  highlightEmotion: string | null;
   onSelect: (recordId: string) => void;
 }
 
@@ -21,7 +19,7 @@ const toTuple = (p: number[]): [number, number, number] => [p[0], p[1], p[2]];
 
 /**
  * Consciousness star map: records are nodes, time forms a continuous trajectory,
- * and records sharing the same primary emotion form constellation links.
+ * and records sharing any chosen feeling form constellation links.
  * `clusterVisibility` (derived from data coverage) fades association links
  * when there is too little data to read a pattern.
  */
@@ -49,9 +47,8 @@ export function StarMap({
           .filter((n): n is AtlasNode => Boolean(n));
         return {
           id: cluster.id,
-          // Node colors are already custom-emotion aware; the built-in color
-          // is only a fallback for clusters whose nodes are all missing.
-          color: clusterNodes[0]?.color ?? emotionColor(cluster.emotion),
+          // Resolved from the display layer, so custom tags keep their color.
+          color: cluster.color,
           points: clusterNodes.map((n) => toTuple(n.position)),
           opacity: 0.25 + clusterVisibility * 0.5,
         };
