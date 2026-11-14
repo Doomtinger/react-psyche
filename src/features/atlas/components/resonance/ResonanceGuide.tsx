@@ -77,19 +77,28 @@ const TERMS: { term: string; body: string; onlyComplex?: boolean }[] = [
 ];
 
 /** Compact, always-visible reading hint with an expandable glossary. */
-export function ResonanceGuideBar({ simpleView }: { simpleView: boolean }) {
+export function ResonanceGuideBar({
+  simpleView,
+  isMobile = false,
+}: {
+  simpleView: boolean;
+  isMobile?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const steps = simpleView ? SIMPLE_STEPS : COMPLEX_STEPS;
   const terms = simpleView ? TERMS.filter((t) => !t.onlyComplex) : TERMS;
+  const summary = isMobile
+    ? simpleView
+      ? "横轴＝时间，纵轴＝情绪强度；圆点＝一次记录，颜色＝当时的情绪。轻点圆点可打开原记录。"
+      : "横轴＝时间，纵轴＝相干度（越往上越自洽）；彩色细线＝当时并存的情绪。轻点图上任意位置看解释。"
+    : simpleView
+      ? "横轴＝时间，纵轴＝情绪强度；圆点＝一次记录，颜色＝当时的情绪。悬停圆点看细节，点击打开原记录。"
+      : "横轴＝时间，纵轴＝相干度（越往上越自洽）；彩色细线＝当时并存的情绪。悬停图上看解释，点击打开原记录。";
 
   return (
     <div className="res-guide-bar">
       <span className="res-guide-tag">怎么读</span>
-      <span className="res-guide-summary">
-        {simpleView
-          ? "横轴＝时间，纵轴＝情绪强度；圆点＝一次记录，颜色＝当时的情绪。悬停圆点看细节，点击打开原记录。"
-          : "横轴＝时间，纵轴＝相干度（越往上越自洽）；彩色细线＝当时并存的情绪。悬停图上看解释，点击打开原记录。"}
-      </span>
+      <span className="res-guide-summary">{summary}</span>
       <button
         type="button"
         className="btn btn-ghost sm res-guide-btn"

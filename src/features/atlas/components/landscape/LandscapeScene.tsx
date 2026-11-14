@@ -12,6 +12,7 @@ import type { LandscapeMode } from "./types";
 import { FieldMesh } from "./FieldMesh";
 import { LandscapeNodes } from "./LandscapeNodes";
 import { StarMap } from "./StarMap";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface LandscapeSceneProps {
   mode: LandscapeMode;
@@ -37,13 +38,18 @@ export function LandscapeScene({
   resetKey,
 }: LandscapeSceneProps) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const mobile = useIsMobile() === true;
 
   useEffect(() => {
     controlsRef.current?.reset();
   }, [resetKey]);
 
   return (
-    <Canvas camera={{ position: [0, 11, 22], fov: 50 }} dpr={[1, 2]}>
+    <Canvas
+      camera={{ position: [0, 11, 22], fov: 50 }}
+      dpr={[1, mobile ? 1.25 : 2]}
+      gl={{ antialias: !mobile }}
+    >
       <color attach="background" args={["#070b14"]} />
       <ambientLight intensity={0.7} />
       <pointLight position={[12, 14, 10]} intensity={0.85} />

@@ -5,6 +5,7 @@ import type { AppError } from "@/domain/repositories/AppError";
 import type { EmotionTag, MoodRecord } from "@/domain/entities/MoodRecord";
 import { Spinner } from "@/shared/components/Spinner";
 import { useReducedMotion } from "@/shared/utils/useReducedMotion";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { formatDateTime } from "@/shared/utils/date";
 import { timestampedFilename } from "@/shared/utils/download";
 import { AtlasFallback } from "../AtlasFallback";
@@ -79,6 +80,8 @@ export function ResonanceFlowView({
   onExitToVisualization,
 }: ResonanceFlowViewProps) {
   const osReduced = useReducedMotion();
+  const mobile = useIsMobile() === true;
+  const mobileDefaultApplied = useRef(false);
   const [forceStatic, setForceStatic] = useState(false);
   const [simpleView, setSimpleView] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -96,6 +99,15 @@ export function ResonanceFlowView({
   const [hoverInfo, setHoverInfo] = useState<SliceHoverInfo | null>(null);
 
   const reducedMotion = forceStatic || osReduced;
+
+  // Phones start on the simpler, more readable view. Applied once so a later
+  // manual switch back to the complex view is never overridden.
+  useEffect(() => {
+    if (!mobile || mobileDefaultApplied.current) return;
+    mobileDefaultApplied.current = true;
+    setSimpleView(true);
+  }, [mobile]);
+
   const complexRef = useRef<SVGSVGElement>(null);
   const simpleRef = useRef<SVGSVGElement>(null);
   const progressRef = useRef(1);
@@ -345,9 +357,10 @@ export function ResonanceFlowView({
         onExport={() => void exportPng()}
         exporting={exporting}
         onExitToVisualization={onExitToVisualization}
+        isMobile={mobile}
       />
 
-      <ResonanceGuideBar simpleView={simpleView} />
+      <ResonanceGuideBar simpleView={simpleView} isMobile={mobile} />
 
       <div className="atlas-body">
         <div className="atlas-canvas resonance-canvas">
@@ -372,6 +385,7 @@ export function ResonanceFlowView({
               selectedSlice={selectedSlice}
               onSelectSlice={handleSelectSlice}
               svgRef={simpleRef}
+              isMobile={mobile}
             />
           ) : (
             <ResonanceFlow
@@ -389,9 +403,10 @@ export function ResonanceFlowView({
               onPanShift={handlePanShift}
               onHoverChange={setHoverInfo}
               svgRef={complexRef}
+              isMobile={mobile}
             />
           )}
-          {hoverInfo && chartReady && !simpleView ? (
+          {hoverInfo && chartReady && !simpleView && !mobile ? (
             <div
               className="res-hover-card"
               style={{
@@ -433,7 +448,9 @@ export function ResonanceFlowView({
           }
         >
           <p className="muted">
-            把鼠标停在图上任意时刻，就能看到那一刻的相干度、情绪和事件的白话解释；点击可打开当时写下的原始记录。滚轮缩放、拖拽平移时间轴，播放可回看状态随时间的变化。
+            {mobile
+              ? "轻点图上任意时刻，下方会显示那一刻的相干度、情绪和事件解释；轻点事件标记可打开原始记录。左右滑动看完整时间轴，＋/－ 缩放时间段，「更多设置」里有回放、刻度、高亮与导出。"
+              : "把鼠标停在图上任意时刻，就能看到那一刻的相干度、情绪和事件的白话解释；点击可打开当时写下的原始记录。滚轮缩放、拖拽平移时间轴，播放可回看状态随时间的变化。"}
           </p>
           {records.length === 1 ? (
             <p className="landscape-note">
@@ -450,6 +467,19 @@ export function ResonanceFlowView({
           ) : null}
         </DetailAside>
       </div>
+
+      {mobile && chartReady ? (
+        <>
+          <p className="res-mobile-hint">
+            左右滑动查看完整时间轴 · 轻点图上任意时刻，下方显示那一刻的解释
+          </p>
+          {selectedSlice !== null && series.slices[selectedSlice] ? (
+            <div className="res-mobile-slice-card">
+              <SliceHoverCard slice={series.slices[selectedSlice]} />
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

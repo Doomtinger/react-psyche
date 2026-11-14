@@ -6,6 +6,7 @@ import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { RecordNode } from "./RecordNode";
 import type { AtlasNode } from "../types";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface AtlasSceneProps {
   nodes: AtlasNode[];
@@ -23,13 +24,18 @@ export function AtlasScene({
   resetKey,
 }: AtlasSceneProps) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const mobile = useIsMobile() === true;
 
   useEffect(() => {
     controlsRef.current?.reset();
   }, [resetKey]);
 
   return (
-    <Canvas camera={{ position: [0, 4, 16], fov: 50 }} dpr={[1, 2]}>
+    <Canvas
+      camera={{ position: [0, 4, 16], fov: 50 }}
+      dpr={[1, mobile ? 1.25 : 2]}
+      gl={{ antialias: !mobile }}
+    >
       <color attach="background" args={["#0b0f1a"]} />
       <ambientLight intensity={0.75} />
       <pointLight position={[12, 14, 10]} intensity={0.9} />

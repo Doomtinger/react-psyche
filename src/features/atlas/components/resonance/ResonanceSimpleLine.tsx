@@ -28,6 +28,8 @@ interface ResonanceSimpleLineProps {
   highlightEmotion: EmotionTag | null;
   selectedSlice: number | null;
   onSelectSlice: (index: number | null) => void;
+  /** Enlarge tap targets on phones. */
+  isMobile: boolean;
   svgRef: React.RefObject<SVGSVGElement>;
 }
 
@@ -61,6 +63,7 @@ export function ResonanceSimpleLine({
   highlightEmotion,
   selectedSlice,
   onSelectSlice,
+  isMobile,
   svgRef,
 }: ResonanceSimpleLineProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -193,23 +196,35 @@ export function ResonanceSimpleLine({
         const dimmed =
           highlightEmotion !== null &&
           slice.emotions[0]?.tag !== highlightEmotion;
+        const selected = selectedSlice === slice.index;
+        const cx = xOf(slice.t, domain);
+        const cy = yOfNorm(slice.intensity);
         return (
-          <circle
-            key={slice.index}
-            cx={xOf(slice.t, domain)}
-            cy={yOfNorm(slice.intensity)}
-            r={selectedSlice === slice.index ? 4.5 : 2.6}
-            fill={slice.emotions[0]?.color ?? "#9aa0a6"}
-            opacity={slice.isGap || dimmed ? 0.25 : 0.9}
-            stroke={
-              selectedSlice === slice.index ? "var(--accent)" : "none"
-            }
-            strokeWidth={selectedSlice === slice.index ? 1.6 : 0}
-            onClick={() => onSelectSlice(slice.index)}
-            className="res-hit"
-          >
-            <title>{dotTooltip(slice)}</title>
-          </circle>
+          <g key={slice.index}>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={isMobile ? (selected ? 8 : 6) : selected ? 4.5 : 2.6}
+              fill={slice.emotions[0]?.color ?? "#9aa0a6"}
+              opacity={slice.isGap || dimmed ? 0.25 : 0.9}
+              stroke={selected ? "var(--accent)" : "none"}
+              strokeWidth={selected ? 1.6 : 0}
+              onClick={() => onSelectSlice(slice.index)}
+              className="res-hit"
+            >
+              <title>{dotTooltip(slice)}</title>
+            </circle>
+            {isMobile ? (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={16}
+                fill="transparent"
+                className="res-hit"
+                onClick={() => onSelectSlice(slice.index)}
+              />
+            ) : null}
+          </g>
         );
       })}
 

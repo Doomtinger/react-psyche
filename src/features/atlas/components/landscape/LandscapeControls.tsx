@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { EMOTION_OPTIONS } from "@/features/records/types";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { emotionColor } from "@/shared/constants/emotions";
 import { cn } from "@/shared/utils/cn";
 import type { EmotionTag } from "@/domain/entities/MoodRecord";
@@ -52,6 +54,11 @@ export function LandscapeControls({
   onReducedMotionChange,
   onResetView,
 }: LandscapeControlsProps) {
+  const mobile = useIsMobile() === true;
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = mobile && !expanded;
+  const hide = (base: string) => cn(base, collapsed && "is-mobile-collapsed");
+
   return (
     <div className="landscape-controls">
       <div className="landscape-control-block">
@@ -91,7 +98,7 @@ export function LandscapeControls({
         </div>
       </div>
 
-      <div className="landscape-control-block landscape-control-grow">
+      <div className={hide("landscape-control-block landscape-control-grow")}>
         <span className="landscape-control-label">时间轴</span>
         <input
           type="range"
@@ -104,7 +111,7 @@ export function LandscapeControls({
         />
       </div>
 
-      <div className="landscape-control-block">
+      <div className={hide("landscape-control-block")}>
         <span className="landscape-control-label">情绪</span>
         <div className="filter-group" role="group" aria-label="情绪高亮">
           {EMOTION_OPTIONS.map((opt) => {
@@ -135,7 +142,17 @@ export function LandscapeControls({
       </div>
 
       <div className="landscape-control-block landscape-control-actions">
-        <label className="settings-toggle" title="降低或关闭动态效果">
+        {mobile ? (
+          <button
+            type="button"
+            className="btn btn-ghost sm mobile-controls-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "收起设置" : "更多设置"}
+          </button>
+        ) : null}
+        <label className={hide("settings-toggle")} title="降低或关闭动态效果">
           <input
             type="checkbox"
             checked={reducedMotion}

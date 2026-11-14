@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { EMOTION_OPTIONS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
 import { cn } from "@/shared/utils/cn";
@@ -29,6 +30,8 @@ interface ResonanceControlsProps {
   exporting: boolean;
   /** Switch back to the 3D visualization modes (out of the resonance view). */
   onExitToVisualization: () => void;
+  /** Phone mode collapses secondary controls behind a "more" button. */
+  isMobile: boolean;
 }
 
 const SPEEDS = [0.5, 1, 2] as const;
@@ -61,7 +64,13 @@ export function ResonanceControls({
   onExport,
   exporting,
   onExitToVisualization,
+  isMobile,
 }: ResonanceControlsProps) {
+  const [expanded, setExpanded] = useState(false);
+  // Only phones collapse controls; desktop keeps every control visible.
+  const collapsed = isMobile && !expanded;
+  const hide = (base: string) => cn(base, collapsed && "is-mobile-collapsed");
+
   return (
     <div className="landscape-controls">
       <div className="landscape-control-block">
@@ -89,7 +98,7 @@ export function ResonanceControls({
       </div>
 
       {!simpleView ? (
-        <div className="landscape-control-block landscape-control-grow">
+        <div className={hide("landscape-control-block landscape-control-grow")}>
           <span className="landscape-control-label">时序回放</span>
           <div className="resonance-playback">
             <button
@@ -126,7 +135,7 @@ export function ResonanceControls({
         </div>
       ) : null}
 
-      <div className="landscape-control-block">
+      <div className={hide("landscape-control-block")}>
         <span className="landscape-control-label" title="只改变日期刻度的疏密，不会合并或筛选记录">时间刻度</span>
         <div className="preset-group" role="group" aria-label="时间刻度疏密">
           <button
@@ -182,7 +191,7 @@ export function ResonanceControls({
         </div>
       </div>
 
-      <div className="landscape-control-block">
+      <div className={hide("landscape-control-block")}>
         <span className="landscape-control-label" title="选中后只突出这种情绪对应的细线／圆点，其他会淡化">情绪高亮</span>
         <div className="filter-group" role="group" aria-label="情绪高亮">
           {EMOTION_OPTIONS.map((opt) => {
@@ -219,7 +228,17 @@ export function ResonanceControls({
         >
           ← 返回可视化
         </button>
-        <label className="settings-toggle" title="降低或关闭动态效果">
+        {isMobile ? (
+          <button
+            type="button"
+            className="btn btn-ghost sm mobile-controls-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "收起设置" : "更多设置"}
+          </button>
+        ) : null}
+        <label className={hide("settings-toggle")} title="降低或关闭动态效果">
           <input
             type="checkbox"
             checked={reducedMotion}
@@ -228,7 +247,7 @@ export function ResonanceControls({
           静态模式
         </label>
         <label
-          className="settings-toggle"
+          className={hide("settings-toggle")}
           title="导出图片底部附带原始文字"
         >
           <input
@@ -240,7 +259,7 @@ export function ResonanceControls({
         </label>
         <button
           type="button"
-          className="btn btn-secondary sm"
+          className={hide("btn btn-secondary sm")}
           onClick={onExport}
           disabled={exporting}
         >

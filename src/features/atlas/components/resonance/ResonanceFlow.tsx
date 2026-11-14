@@ -98,10 +98,11 @@ function toViewPoint(
 
 function nearestSliceIndex(
   positions: SlicePosition[],
-  vx: number
+  vx: number,
+  maxDist = MAX_HOVER_DIST
 ): number | null {
   let best: number | null = null;
-  let dist = MAX_HOVER_DIST;
+  let dist = maxDist;
   for (const p of positions) {
     const d = Math.abs(p.x - vx);
     if (d < dist) {
@@ -142,6 +143,8 @@ interface ResonanceFlowProps {
   onPanShift: (deltaT: number) => void;
   /** Show/hide the plain-language hover card for a slice. */
   onHoverChange: (info: SliceHoverInfo | null) => void;
+  /** Phones use tap-to-inspect instead of hover/wheel/drag panning. */
+  isMobile: boolean;
   svgRef: React.RefObject<SVGSVGElement>;
 }
 
@@ -293,6 +296,7 @@ export function ResonanceFlow({
   onZoom,
   onPanShift,
   onHoverChange,
+  isMobile,
   svgRef,
 }: ResonanceFlowProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -338,7 +342,9 @@ export function ResonanceFlow({
   );
 
   // Non-passive wheel zoom (zooms the time axis around the cursor).
+  // Phones have no wheel; keep the listener off so it cannot swallow touch.
   useEffect(() => {
+    if (isMobile) return;
     const el = svgRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
@@ -350,7 +356,7 @@ export function ResonanceFlow({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [domain, onZoom, svgRef]);
+  }, [domain, onZoom, svgRef, isMobile]);
 
   function viewPointOf(e: React.PointerEvent<SVGSVGElement>): ViewPoint | null {
     return toViewPoint(svgRef.current, e.clientX, e.clientY);
@@ -369,6 +375,8 @@ export function ResonanceFlow({
     if (e.button !== 0) return;
     suppressClickRef.current = false;
     panRef.current = { lastVx: viewPointOf(e)?.vx ?? 0, movedPx: 0 };
+    // On phones the browser owns scrolling; pointer capture would block it.
+    if (isMobile) return;
     hoverIndexRef.current = null;
     onHoverChange(null);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -379,6 +387,16 @@ export function ResonanceFlow({
     const p = viewPointOf(e);
     if (!p) return;
     const pan = panRef.current;
+    if (isMobile) {
+      // Only track whether the finger moved (scroll) or stayed (tap).
+      if (pan) {
+        const dx = p.vx - pan.lastVx;
+        pan.lastVx = p.vx;
+        pan.movedPx += Math.abs(dx);
+        if (pan.movedPx > 10) suppressClickRef.current = true;
+      }
+      return;
+    }
     if (!pan) {
       // Hover anywhere in the plot explains that moment in plain language.
       // Only notify when the slice changes, so pointer moves don't re-render
@@ -407,17 +425,26 @@ export function ResonanceFlow({
     allowSelect = true
   ) {
     if (!panRef.current) return;
-    const wasClick = panRef.current.movedPx <= 4;
+    const wasClick = panRef.current.movedPx <= (isMobile ? 10 : 4);
     panRef.current = null;
-    setDragging(false);
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // pointer capture may already be released
+    if (!isMobile) {
+      setDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // pointer capture may already be released
+      }
     }
     if (!allowSelect || !wasClick || suppressClickRef.current) return;
     const p = viewPointOf(e);
-    const index = p && inPlot(p) ? nearestSliceIndex(view.slicePositions, p.vx) : null;
+    const index =
+      p && inPlot(p)
+        ? nearestSliceIndex(
+            view.slicePositions,
+            p.vx,
+            isMobile ? 90 : MAX_HOVER_DIST
+          )
+        : null;
     onSelectSlice(index);
   }
 

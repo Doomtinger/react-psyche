@@ -1652,3 +1652,316 @@ input[type="color"].color-picker::-webkit-color-swatch {
     max-height: 240px;
   }
 }
+
+/* ---------- Phone mode (matches MOBILE_BREAKPOINT = 768px) ----------
+   Layout switches to a bottom tab bar + single scrolling column here.
+   Behaviour-only differences live in useIsMobile() consumers. */
+@media (max-width: 768px) {
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+  }
+  .app-shell {
+    display: block;
+    min-height: 100dvh;
+  }
+
+  /* Bottom tab bar instead of the desktop sidebar. */
+  .app-nav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 8px calc(6px + var(--safe-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-top: 1px solid var(--border-strong);
+    background: rgba(17, 23, 38, 0.96);
+    backdrop-filter: blur(10px);
+  }
+  .app-brand,
+  .nav-footer {
+    display: none;
+  }
+  .nav-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 2px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-list::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-list > li {
+    flex: 1 0 auto;
+    min-width: 56px;
+  }
+  .nav-link {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 52px;
+    padding: 6px 4px;
+    font-size: 10.5px;
+    text-align: center;
+  }
+  .nav-icon {
+    width: auto;
+    font-size: 18px;
+  }
+  .nav-label {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .app-main {
+    padding: 16px 14px calc(86px + var(--safe-bottom));
+    max-width: none;
+    min-height: 100dvh;
+  }
+
+  .page-header {
+    margin-bottom: 14px;
+  }
+  .page-title {
+    font-size: 22px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .home-title {
+    font-size: 26px;
+  }
+  .home-grid,
+  .review-stats {
+    gap: 12px;
+  }
+  .home-card,
+  .settings-card {
+    padding: 16px 14px;
+  }
+
+  /* Atlas / resonance: stack and let the page scroll, no fixed 100vh. */
+  .atlas-page {
+    height: auto;
+    min-height: 0;
+  }
+  .atlas-toolbar {
+    gap: 8px;
+  }
+  .atlas-body,
+  .atlas-body.no-detail {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .atlas-canvas {
+    min-height: 300px;
+  }
+  .atlas-detail {
+    max-height: none;
+    padding: 14px;
+  }
+  .atlas-detail-toggle {
+    top: 8px;
+    right: 8px;
+  }
+
+  /* Control bars: compact groups and touch-sized targets. */
+  .landscape-controls {
+    gap: 10px 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .landscape-control-block {
+    gap: 6px;
+  }
+  .landscape-control-grow {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .landscape-control-actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .preset-group,
+  .filter-group {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .btn.sm,
+  .filter-chip {
+    min-height: 38px;
+  }
+  .resonance-playback {
+    flex-wrap: wrap;
+  }
+  .resonance-playback .landscape-slider {
+    flex: 1 1 120px;
+  }
+  .settings-toggle {
+    min-height: 38px;
+  }
+  .mobile-controls-toggle {
+    display: inline-flex;
+  }
+  .landscape-controls .is-mobile-collapsed {
+    display: none;
+  }
+
+  /* Guide bar / legend */
+  .res-guide-bar {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .res-guide-tag {
+    order: 0;
+  }
+  .res-guide-summary {
+    flex: 1 1 100%;
+    order: 2;
+  }
+  .res-guide-btn {
+    order: 1;
+    min-height: 36px;
+  }
+  .res-guide-popover {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 80dvh;
+  }
+  .resonance-legend {
+    font-size: 12px;
+  }
+
+  /* Keep a readable minimum width for the 1200x440 chart: horizontal
+     scrolling beats shrinking every label down to ~3px. */
+  .resonance-canvas {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .resonance-svg {
+    min-width: 880px;
+    touch-action: pan-x pan-y;
+  }
+  .resonance-svg text[font-size="11"] {
+    font-size: 16px;
+  }
+  .resonance-svg text[font-size="11.5"] {
+    font-size: 17px;
+  }
+  .res-hover-card {
+    display: none;
+  }
+  .res-mobile-slice-card {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+  }
+  .res-mobile-slice-card .res-hover-tip {
+    display: none;
+  }
+  .res-mobile-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  /* Modals and the record form */
+  .modal-backdrop {
+    padding: 10px;
+    align-items: flex-end;
+  }
+  .modal {
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  .modal-header {
+    padding: 14px 16px;
+  }
+  .modal-body {
+    padding: 16px;
+  }
+  .modal-actions,
+  .form-actions,
+  .import-actions {
+    flex-wrap: wrap;
+  }
+  .field-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .field-row > * {
+    flex: 1 1 140px;
+  }
+  .intensity-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .intensity-pip {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+  .emotion-chip {
+    min-height: 40px;
+  }
+  .color-picker {
+    width: 44px;
+    height: 40px;
+  }
+
+  /* Emotion imagery cards */
+  .imagery-tag-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .imagery-glyph-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .imagery-scene {
+    min-height: 190px;
+  }
+  .imagery-facts > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .imagery-facts dt {
+    flex: none;
+  }
+
+  /* Review / timeline density */
+  .emotion-bar-row {
+    grid-template-columns: 60px 1fr 32px;
+    gap: 8px;
+  }
+  .timeline-filters,
+  .atlas-controls,
+  .review-controls {
+    gap: 10px;
+  }
+  .search-field {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}
