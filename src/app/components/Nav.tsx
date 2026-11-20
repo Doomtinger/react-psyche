@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/landscape", label: "心理景观", icon: "✦" },
   { href: "/timeline", label: "时间线", icon: "☰" },
   { href: "/review", label: "周期回顾", icon: "◷" },
+  { href: "/portrait", label: "人物画像", icon: "⬡" },
   { href: "/settings", label: "设置", icon: "⚙" },
 ];
 

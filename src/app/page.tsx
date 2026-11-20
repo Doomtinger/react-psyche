@@ -78,6 +78,13 @@ export default function HomePage() {
           <span className="home-card-title">周期回顾</span>
           <span className="home-card-desc">了解一段时间内的状态分布与变化。</span>
         </Link>
+        <Link href="/portrait" className="home-card">
+          <span className="home-card-icon" aria-hidden="true">
+            ✦
+          </span>
+          <span className="home-card-title">人物画像</span>
+          <span className="home-card-desc">选六张图，看一份六边形画像。</span>
+        </Link>
       </section>
 
       <section className="home-recent">
