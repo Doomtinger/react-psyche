@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Slider, Switch } from "antd";
 import { EMOTION_OPTIONS } from "@/features/records/types";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { emotionColor } from "@/shared/constants/emotions";
@@ -112,14 +113,14 @@ export function LandscapeControls({
 
       <div className={hide("landscape-control-block landscape-control-grow")}>
         <span className="landscape-control-label">时间轴</span>
-        <input
-          type="range"
+        <Slider
+          className="landscape-slider"
           min={0}
           max={100}
           value={Math.round(playhead * 100)}
-          className="landscape-slider"
-          onChange={(e) => onPlayheadChange(Number(e.target.value) / 100)}
+          onChange={(value) => onPlayheadChange(value / 100)}
           aria-label="拖动以演变场景"
+          tooltip={{ open: false }}
         />
       </div>
 
@@ -160,10 +161,10 @@ export function LandscapeControls({
           </button>
         ) : null}
         <label className={hide("settings-toggle")} title="降低或关闭动态效果">
-          <input
-            type="checkbox"
+          <Switch
+            size="small"
             checked={reducedMotion}
-            onChange={(e) => onReducedMotionChange(e.target.checked)}
+            onChange={(checked) => onReducedMotionChange(checked)}
           />
           静态模式
         </label>

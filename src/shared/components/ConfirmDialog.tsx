@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal } from "./Modal";
+import { Modal } from "antd";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,26 +26,19 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onClose={onCancel} title={title} closeOnBackdrop={!busy}>
+    <Modal
+      open={open}
+      title={title}
+      onCancel={busy ? undefined : onCancel}
+      maskClosable={false}
+      keyboard={!busy}
+      cancelText={cancelLabel}
+      okText={busy ? "处理中…" : confirmLabel}
+      okButtonProps={{ danger: destructive, loading: busy }}
+      onOk={onConfirm}
+      width={480}
+    >
       <p className="confirm-message">{message}</p>
-      <div className="modal-actions">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onCancel}
-          disabled={busy}
-        >
-          {cancelLabel}
-        </button>
-        <button
-          type="button"
-          className={destructive ? "btn btn-danger" : "btn btn-primary"}
-          onClick={onConfirm}
-          disabled={busy}
-        >
-          {busy ? "处理中…" : confirmLabel}
-        </button>
-      </div>
     </Modal>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Slider, Switch } from "antd";
 import { EMOTION_OPTIONS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
 import { cn } from "@/shared/utils/cn";
@@ -122,14 +123,14 @@ export function ResonanceControls({
             >
               {playing ? "⏸ 暂停" : "▶ 播放"}
             </button>
-            <input
-              type="range"
+            <Slider
+              className="landscape-slider"
               min={0}
               max={1000}
               value={Math.round(progress * 1000)}
-              className="landscape-slider"
               aria-label="回放进度"
-              onChange={(e) => onProgressChange(Number(e.target.value) / 1000)}
+              onChange={(value) => onProgressChange(value / 1000)}
+              tooltip={{ open: false }}
             />
             <div className="preset-group" role="group" aria-label="播放速度">
               {SPEEDS.map((s) => (
@@ -249,10 +250,10 @@ export function ResonanceControls({
           </button>
         ) : null}
         <label className={hide("settings-toggle")} title="降低或关闭动态效果">
-          <input
-            type="checkbox"
+          <Switch
+            size="small"
             checked={reducedMotion}
-            onChange={(e) => onReducedMotionChange(e.target.checked)}
+            onChange={(checked) => onReducedMotionChange(checked)}
           />
           静态模式
         </label>
@@ -260,10 +261,10 @@ export function ResonanceControls({
           className={hide("settings-toggle")}
           title="导出图片底部附带原始文字"
         >
-          <input
-            type="checkbox"
+          <Switch
+            size="small"
             checked={watermark}
-            onChange={(e) => onWatermarkChange(e.target.checked)}
+            onChange={(checked) => onWatermarkChange(checked)}
           />
           附带原始文字水印
         </label>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "antd";
 import type { EmotionTag } from "@/domain/entities/MoodRecord";
 import { EMOTION_OPTIONS } from "@/features/records/types";
 import { emotionColor } from "@/shared/constants/emotions";
@@ -123,17 +124,15 @@ export function EmotionImagerySettings({
                 aria-label={tagImagery?.chooseAny ? "任选意象" : "相关意象"}
               >
                 {choices.map((id) => (
-                  <button
+                  <Button
                     key={id}
-                    type="button"
-                    className={
-                      id === spec.id ? "btn btn-primary sm" : "btn btn-ghost sm"
-                    }
+                    type={id === spec.id ? "primary" : "text"}
+                    size="small"
                     aria-pressed={id === spec.id}
                     onClick={() => setActiveImagery(id)}
                   >
                     {IMAGERY[id].name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : null}

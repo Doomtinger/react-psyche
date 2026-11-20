@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button, ColorPicker, Input, TimePicker } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
 import {
   EMOTION_OPTIONS,
   INTENSITY_LABELS,
@@ -219,37 +221,32 @@ export function QuickRecordForm({
 
         {otherActive ? (
           <div className="custom-emotion-composer">
-            <input
-              type="text"
-              className="text-input sm custom-emotion-input"
+            <Input
+              size="small"
+              className="custom-emotion-input"
               value={customInput}
               maxLength={12}
               placeholder="输入自定义标签（最多 12 字）"
               aria-label="自定义情绪标签名称"
               onChange={(e) => setCustomInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault(); // keep Enter from submitting the form
-                  addCustomEmotion();
-                }
+              onPressEnter={(e) => {
+                e.preventDefault(); // keep Enter from submitting the form
+                addCustomEmotion();
               }}
             />
-            <input
-              type="color"
-              className="color-picker"
+            <ColorPicker
+              size="small"
+              disabledAlpha
               value={customColor}
-              aria-label="选择标签颜色"
-              title="选择标签颜色"
-              onChange={(e) => setCustomColor(e.target.value)}
+              onChange={(color) => setCustomColor(color.toHexString())}
             />
-            <button
-              type="button"
-              className="btn btn-secondary sm"
+            <Button
+              size="small"
               onClick={addCustomEmotion}
               disabled={!customInput.trim() || customFull}
             >
               添加标签
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -307,9 +304,8 @@ export function QuickRecordForm({
         <label className="field-label" htmlFor="record-note">
           文字（可选）
         </label>
-        <textarea
+        <Input.TextArea
           id="record-note"
-          className="text-input"
           value={note}
           maxLength={2000}
           rows={3}
@@ -322,9 +318,8 @@ export function QuickRecordForm({
         <label className="field-label" htmlFor="record-events">
           生活事件标签（可选，用空格或逗号分隔）
         </label>
-        <input
+        <Input
           id="record-events"
-          className="text-input"
           value={eventTagsInput}
           placeholder="例如：work family exercise"
           onChange={(e) => setEventTagsInput(e.target.value)}
@@ -346,12 +341,14 @@ export function QuickRecordForm({
           <label className="field-label" htmlFor="record-time">
             时间
           </label>
-          <input
+          <TimePicker
             id="record-time"
-            type="time"
-            className="text-input"
-            value={timeValue}
-            onChange={(e) => setTimeValue(e.target.value)}
+            format="HH:mm"
+            allowClear={false}
+            value={timeValue ? dayjs(timeValue, "HH:mm") : null}
+            onChange={(t: Dayjs | null) =>
+              setTimeValue(t ? t.format("HH:mm") : toTimeValue())
+            }
           />
         </div>
       </div>
@@ -364,22 +361,18 @@ export function QuickRecordForm({
 
       <div className="form-actions">
         {onCancel ? (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onCancel}
-            disabled={submitting}
-          >
+          <Button onClick={onCancel} disabled={submitting}>
             取消
-          </button>
+          </Button>
         ) : null}
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={submitting || !canSubmit}
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={submitting}
+          disabled={!canSubmit}
         >
-          {submitting ? "保存中…" : submitLabel}
-        </button>
+          {submitLabel}
+        </Button>
       </div>
     </form>
   );

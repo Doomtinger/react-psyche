@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "antd";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
 import { RecordDetail } from "@/features/records/components/RecordDetail";
 
@@ -35,13 +36,9 @@ export function DetailAside({
             onEdit={undefined}
             onDelete={undefined}
           />
-          <button
-            type="button"
-            className="btn btn-ghost sm"
-            onClick={onClose}
-          >
+          <Button type="text" size="small" onClick={onClose}>
             关闭详情
-          </button>
+          </Button>
         </>
       ) : (
         <div className="landscape-hint">{children}</div>

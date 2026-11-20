@@ -1,3 +1,6 @@
+"use client";
+
+import { Button } from "antd";
 import { AppError } from "@/domain/repositories/AppError";
 
 interface ErrorStateProps {
@@ -20,9 +23,7 @@ export function ErrorState({ error, onRetry, compact }: ErrorStateProps) {
     <div className={compact ? "error-state compact" : "error-state"} role="alert">
       <p className="error-state-message">{message}</p>
       {onRetry ? (
-        <button type="button" className="btn btn-secondary" onClick={onRetry}>
-          重试
-        </button>
+        <Button onClick={onRetry}>重试</Button>
       ) : null}
     </div>
   );

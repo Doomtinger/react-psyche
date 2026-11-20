@@ -228,27 +228,6 @@ button {
 .field-row .field {
   flex: 1;
 }
-.text-input {
-  width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-strong);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  font-size: 14px;
-}
-.text-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(77, 139, 255, 0.2);
-}
-textarea.text-input {
-  resize: vertical;
-}
-.text-input.sm {
-  padding: 6px 10px;
-  width: auto;
-}
 
 /* ---------- Emotion chips & intensity ---------- */
 .emotion-grid {
@@ -307,8 +286,7 @@ textarea.text-input {
   font-size: 13.5px;
   margin: 0 0 12px;
 }
-.form-actions,
-.modal-actions {
+.form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -751,22 +729,9 @@ textarea.text-input {
   gap: 12px;
   width: 100%;
 }
-.search-field {
-  position: relative;
+.search-input {
   flex: 1 1 240px;
   max-width: 420px;
-}
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-faint);
-  font-size: 16px;
-}
-.search-input {
-  width: 100%;
-  padding-left: 32px;
 }
 .filter-group {
   display: flex;
@@ -1373,53 +1338,7 @@ textarea.text-input {
   flex-wrap: wrap;
 }
 
-/* ---------- Modal / dialog ---------- */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 7, 14, 0.7);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 50;
-}
-.modal {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  width: 100%;
-  max-width: 520px;
-  box-shadow: var(--shadow);
-  max-height: 88vh;
-  overflow-y: auto;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.modal-title {
-  margin: 0;
-  font-size: 17px;
-}
-.icon-button {
-  background: transparent;
-  border: 0;
-  color: var(--text-muted);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-}
-.icon-button:hover {
-  color: var(--text);
-}
-.modal-body {
-  padding: 20px;
-}
+/* ---------- Modal / dialog (shell styled by antd Modal) ---------- */
 .confirm-message {
   margin: 0 0 18px;
   color: var(--text-muted);
@@ -1578,22 +1497,6 @@ textarea.text-input {
 }
 .custom-emotion-input {
   flex: 1 1 180px;
-}
-input[type="color"].color-picker {
-  width: 38px;
-  height: 34px;
-  padding: 2px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-input);
-  cursor: pointer;
-}
-input[type="color"].color-picker::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-input[type="color"].color-picker::-webkit-color-swatch {
-  border: none;
-  border-radius: 4px;
 }
 .custom-emotion-list {
   display: flex;
@@ -1893,23 +1796,9 @@ input[type="color"].color-picker::-webkit-color-swatch {
   }
 
   /* Modals and the record form */
-  .modal-backdrop {
-    padding: 10px;
-    align-items: flex-end;
+  .ant-modal-content {
+    padding-bottom: calc(16px + var(--safe-bottom));
   }
-  .modal {
-    max-width: none;
-    max-height: 92dvh;
-    border-radius: var(--radius) var(--radius) 0 0;
-    padding-bottom: var(--safe-bottom);
-  }
-  .modal-header {
-    padding: 14px 16px;
-  }
-  .modal-body {
-    padding: 16px;
-  }
-  .modal-actions,
   .form-actions,
   .import-actions {
     flex-wrap: wrap;
@@ -1932,10 +1821,6 @@ input[type="color"].color-picker::-webkit-color-swatch {
   }
   .emotion-chip {
     min-height: 40px;
-  }
-  .color-picker {
-    width: 44px;
-    height: 40px;
   }
 
   /* Emotion imagery cards */
@@ -1970,9 +1855,5 @@ input[type="color"].color-picker::-webkit-color-swatch {
   .atlas-controls,
   .review-controls {
     gap: 10px;
-  }
-  .search-field {
-    flex: 1 1 100%;
-    max-width: none;
   }
 }

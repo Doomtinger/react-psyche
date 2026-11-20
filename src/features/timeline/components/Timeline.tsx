@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button, Input } from "antd";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
 import { EMOTION_OPTIONS, INTENSITY_LABELS } from "@/features/records/types";
@@ -147,39 +148,29 @@ export function Timeline() {
           <p className="page-subtitle">按时间查看、筛选并管理你的状态记录。</p>
         </div>
         <div className="page-header-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={handleBack}
-            title="返回上一页"
-          >
+          <Button type="text" onClick={handleBack} title="返回上一页">
             ← 返回
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
+          </Button>
+          <Button
+            type="primary"
             onClick={() => setDialog({ open: true, mode: "create" })}
           >
             + 新建记录
-          </button>
+          </Button>
         </div>
       </header>
 
       <div className="timeline-filters">
         <div className="timeline-quick">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden="true">
-              ⌕
-            </span>
-            <input
-              type="search"
-              className="text-input search-input"
-              placeholder="搜索笔记、事件标签或情绪…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="搜索记录"
-            />
-          </div>
+          <Input
+            type="search"
+            className="search-input"
+            placeholder="搜索笔记、事件标签或情绪…"
+            value={query}
+            allowClear
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="搜索记录"
+          />
           <AntdRangePicker
             presets={TIMELINE_PRESETS}
             value={range}
@@ -209,9 +200,9 @@ export function Timeline() {
           })}
         </div>
         {hasFilters ? (
-          <button type="button" className="btn btn-ghost sm" onClick={clearFilters}>
+          <Button type="text" size="small" onClick={clearFilters}>
             清除筛选
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -222,9 +213,7 @@ export function Timeline() {
           title="无法读取记录"
           description="请检查浏览器本地存储设置或重试。"
           action={
-            <button className="btn btn-secondary" onClick={() => reload()}>
-              重试
-            </button>
+            <Button onClick={() => reload()}>重试</Button>
           }
         />
       ) : filtered.length === 0 ? (
@@ -237,16 +226,14 @@ export function Timeline() {
           }
           action={
             records.length === 0 ? (
-              <button
-                className="btn btn-primary"
+              <Button
+                type="primary"
                 onClick={() => setDialog({ open: true, mode: "create" })}
               >
                 创建第一条记录
-              </button>
+              </Button>
             ) : (
-              <button className="btn btn-secondary" onClick={clearFilters}>
-                清除筛选
-              </button>
+              <Button onClick={clearFilters}>清除筛选</Button>
             )
           }
         />

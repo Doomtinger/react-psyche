@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Modal as AntdModal } from "antd";
 
 interface ModalProps {
   open: boolean;
@@ -12,6 +12,10 @@ interface ModalProps {
   labelledBy?: string;
 }
 
+/**
+ * Project dialog shell built on Ant Design's Modal. Footer is disabled on
+ * purpose: callers compose their own action row (form buttons, etc.).
+ */
 export function Modal({
   open,
   onClose,
@@ -19,48 +23,18 @@ export function Modal({
   children,
   closeOnBackdrop = true,
 }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    dialogRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (closeOnBackdrop && e.target === e.currentTarget) onClose();
-      }}
+    <AntdModal
+      open={open}
+      onCancel={onClose}
+      title={title}
+      footer={null}
+      width={520}
+      maskClosable={closeOnBackdrop}
+      destroyOnHidden
+      aria-label={title}
     >
-      <div
-        ref={dialogRef}
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-      >
-        <div className="modal-header">
-          <h2 className="modal-title">{title}</h2>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="关闭"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </div>
-        <div className="modal-body">{children}</div>
-      </div>
-    </div>
+      {children}
+    </AntdModal>
   );
 }

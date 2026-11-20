@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "antd";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
 import { INTENSITY_LABELS } from "@/features/records/types";
@@ -34,13 +35,13 @@ export default function HomePage() {
         <p className="home-subtitle">
           花一点时间记录此刻的感受。所有数据都保存在你的浏览器本地，无需注册。
         </p>
-        <button
-          type="button"
-          className="btn btn-primary btn-lg"
+        <Button
+          type="primary"
+          size="large"
           onClick={() => setDialogOpen(true)}
         >
           + 快速记录
-        </button>
+        </Button>
       </header>
 
       {showGuide ? (
@@ -49,13 +50,9 @@ export default function HomePage() {
             Flow Space 把“记录”作为核心资产，用 3D Mind Atlas 帮你回看与探索。
             记录保存在当前浏览器的本地存储中，清除浏览器数据或更换设备可能导致记录无法访问，请定期在设置中导出备份。
           </p>
-          <button
-            type="button"
-            className="btn btn-ghost sm"
-            onClick={() => setGuideDismissed(true)}
-          >
+          <Button type="text" size="small" onClick={() => setGuideDismissed(true)}>
             知道了，跳过引导
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -100,12 +97,9 @@ export default function HomePage() {
             title="还没有记录"
             description="创建第一条记录，开始你的自我觉察之旅。系统不会替你解释全部感受。"
             action={
-              <button
-                className="btn btn-primary"
-                onClick={() => setDialogOpen(true)}
-              >
+              <Button type="primary" onClick={() => setDialogOpen(true)}>
                 创建第一条记录
-              </button>
+              </Button>
             }
           />
         ) : (

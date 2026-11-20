@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "antd";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useWebGLSupport } from "@/shared/hooks/useWebGLSupport";
 import { useReducedMotion } from "@/shared/utils/useReducedMotion";
@@ -81,14 +82,9 @@ export function MindAtlas() {
           </p>
         </div>
         <div className="atlas-toolbar-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={resetView}
-            disabled={showFallback}
-          >
+          <Button onClick={resetView} disabled={showFallback}>
             复位视角
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -167,23 +163,23 @@ export function MindAtlas() {
               onDelete={undefined}
             />
             <div className="atlas-detail-actions">
-              <button
-                type="button"
-                className="btn btn-ghost sm"
+              <Button
+                type="text"
+                size="small"
                 onClick={() => setCollapsed(true)}
               >
                 收起
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost sm"
+              </Button>
+              <Button
+                type="text"
+                size="small"
                 onClick={() => {
                   setSelectedId(null);
                   setCollapsed(false);
                 }}
               >
                 关闭详情
-              </button>
+              </Button>
             </div>
           </aside>
         ) : null}

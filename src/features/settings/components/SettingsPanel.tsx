@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button, Switch } from "antd";
 import { container } from "@/application/container";
 import { useRecords } from "@/shared/hooks/useRecords";
 import { useToast } from "@/shared/components/Toast";
@@ -126,9 +127,9 @@ export function SettingsPanel() {
         <p className="settings-desc">
           将当前记录导出为带版本号的 JSON 备份文件。备份仅保存在你的设备上，不会上传到任何服务器。
         </p>
-        <button type="button" className="btn btn-primary" onClick={handleExport}>
+        <Button type="primary" onClick={handleExport}>
           导出数据（{records.length} 条）
-        </button>
+        </Button>
       </section>
 
       <section className="settings-card">
@@ -143,13 +144,9 @@ export function SettingsPanel() {
           className="visually-hidden"
           onChange={handleFileChosen}
         />
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => fileRef.current?.click()}
-        >
+        <Button onClick={() => fileRef.current?.click()}>
           选择备份文件
-        </button>
+        </Button>
 
         {importPreview ? (
           <div className="import-preview">
@@ -164,27 +161,15 @@ export function SettingsPanel() {
               </p>
             ) : null}
             <div className="import-actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setConfirmStrategy("merge")}
-              >
+              <Button type="primary" onClick={() => setConfirmStrategy("merge")}>
                 合并导入
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setConfirmStrategy("replace")}
-              >
+              </Button>
+              <Button onClick={() => setConfirmStrategy("replace")}>
                 全量替换
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => setImportPreview(null)}
-              >
+              </Button>
+              <Button type="text" onClick={() => setImportPreview(null)}>
                 取消
-              </button>
+              </Button>
             </div>
             <p className="settings-desc">
               合并导入：保留现有记录，冲突 ID 以备份为准更新。全量替换：先清空当前记录再写入备份。
@@ -196,10 +181,9 @@ export function SettingsPanel() {
       <section className="settings-card">
         <h2 className="settings-card-title">动态效果偏好</h2>
         <label className="settings-toggle">
-          <input
-            type="checkbox"
+          <Switch
             checked={reducedMotionPref}
-            onChange={(e) => toggleReducedMotion(e.target.checked)}
+            onChange={(checked) => toggleReducedMotion(checked)}
           />
           尽量减少动态效果
         </label>
@@ -215,13 +199,9 @@ export function SettingsPanel() {
         <p className="settings-desc">
           你可以删除单条记录（在时间线中操作），或在此删除全部记录。
         </p>
-        <button
-          type="button"
-          className="btn btn-danger"
-          onClick={() => setConfirmDeleteAll(true)}
-        >
+        <Button danger onClick={() => setConfirmDeleteAll(true)}>
           删除全部记录
-        </button>
+        </Button>
       </section>
 
       <section className="settings-card">

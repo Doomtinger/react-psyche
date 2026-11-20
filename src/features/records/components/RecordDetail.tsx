@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "antd";
 import { INTENSITY_LABELS } from "@/features/records/types";
 import { formatDateTime } from "@/shared/utils/date";
 import type { MoodRecord } from "@/domain/entities/MoodRecord";
@@ -57,36 +58,22 @@ export function RecordDetail({
       <div className="detail-actions">
         {onLocate ? (
           <>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => onLocate("atlas", record.id)}
-            >
+            <Button type="text" onClick={() => onLocate("atlas", record.id)}>
               在 Atlas 中查看
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
+            </Button>
+            <Button
+              type="text"
               onClick={() => onLocate("timeline", record.id)}
             >
               在时间线中查看
-            </button>
+            </Button>
           </>
         ) : null}
-        {onEdit ? (
-          <button type="button" className="btn btn-secondary" onClick={onEdit}>
-            编辑
-          </button>
-        ) : null}
+        {onEdit ? <Button onClick={onEdit}>编辑</Button> : null}
         {onDelete ? (
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={onDelete}
-            disabled={deleting}
-          >
-            {deleting ? "删除中…" : "删除"}
-          </button>
+          <Button danger onClick={onDelete} loading={deleting}>
+            删除
+          </Button>
         ) : null}
       </div>
     </div>
