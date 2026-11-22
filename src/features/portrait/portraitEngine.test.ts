@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { computePortrait, stretch } from "./portraitEngine";
-import { DIMENSIONS, PORTRAIT_IMAGES } from "./portraitData";
+import {
+  buildPortraitDeck,
+  DIMENSION_IDS,
+  DIMENSIONS,
+  PICK_POOL_SIZE,
+  PORTRAIT_IMAGES,
+} from "./portraitData";
 
 describe("stretch", () => {
   it("把六个维度拉伸到 20—90 区间", () => {
@@ -48,5 +54,68 @@ describe("computePortrait", () => {
     const result = computePortrait(["img_path", "img_nonexistent"]);
     expect(result).toBeTruthy();
     expect(result.rankedDims[0]).toBe("explore");
+  });
+});
+
+describe("buildPortraitDeck", () => {
+  it("同一 seed 复现同一批图卡", () => {
+    expect(buildPortraitDeck(20261121)).toEqual(buildPortraitDeck(20261121));
+  });
+
+  it("不同 seed 会抽到不同的图形，而不只是换位置", () => {
+    const a = buildPortraitDeck(1);
+    const b = buildPortraitDeck(2);
+    const idsA = a.map((c) => c.image.id).sort().join(",");
+    const idsB = b.map((c) => c.image.id).sort().join(",");
+    expect(idsA).not.toBe(idsB);
+  });
+
+  it("每次按维度均衡抽取，且图库比展示的牌组更大", () => {
+    expect(PORTRAIT_IMAGES.length).toBeGreaterThan(PICK_POOL_SIZE);
+    for (const seed of [1, 42, 2026]) {
+      const deck = buildPortraitDeck(seed);
+      expect(deck).toHaveLength(PICK_POOL_SIZE);
+      expect(new Set(deck.map((c) => c.image.id)).size).toBe(PICK_POOL_SIZE);
+      for (const dim of DIMENSION_IDS) {
+        const count = deck.filter((c) => {
+          const vector = c.image.vector;
+          const top = DIMENSION_IDS.reduce(
+            (best, id) => (vector[id] > vector[best] ? id : best),
+            DIMENSION_IDS[0]
+          );
+          return top === dim;
+        }).length;
+        expect(count).toBe(3);
+      }
+    }
+  });
+
+  it("只改展示，不改 id / 标签 / 六维向量与画像结果", () => {
+    const deck = buildPortraitDeck(987654);
+    expect(deck).toHaveLength(PICK_POOL_SIZE);
+    for (const card of deck) {
+      const original = PORTRAIT_IMAGES.find((i) => i.id === card.image.id)!;
+      expect(original).toBeTruthy();
+      expect(card.image.label).toBe(original.label);
+      expect(card.image.vector).toEqual(original.vector);
+      expect(card.image.hue).toEqual(original.hue);
+    }
+    const ids = PORTRAIT_IMAGES.slice(0, 6).map((i) => i.id);
+    expect(computePortrait([...ids].reverse()).scores).toEqual(
+      computePortrait(ids).scores
+    );
+  });
+
+  it("变体限制在轻微范围内", () => {
+    for (const { variant } of buildPortraitDeck(42)) {
+      expect(Math.abs(variant.dx)).toBeLessThanOrEqual(5);
+      expect(Math.abs(variant.dy)).toBeLessThanOrEqual(4);
+      expect(Math.abs(variant.rotate)).toBeLessThanOrEqual(4);
+      expect(variant.scale).toBeGreaterThanOrEqual(0.94);
+      expect(variant.scale).toBeLessThanOrEqual(1.06);
+      expect(Math.abs(variant.hueShift)).toBeLessThanOrEqual(18);
+      expect(variant.gradient).toBeGreaterThanOrEqual(0);
+      expect(variant.gradient).toBeLessThanOrEqual(3);
+    }
   });
 });

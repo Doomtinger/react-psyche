@@ -1,7 +1,11 @@
 "use client";
 
 import { useId } from "react";
-import type { MotifId, PortraitImage } from "../portraitData";
+import type {
+  MotifId,
+  PortraitImage,
+  PortraitVariant,
+} from "../portraitData";
 
 /**
  * 内置图卡：每张图是一个小 SVG 场景（渐变基调 + 几何母题）。
@@ -11,6 +15,23 @@ import type { MotifId, PortraitImage } from "../portraitData";
 
 const W = 120;
 const H = 90;
+
+const DEFAULT_VARIANT: PortraitVariant = {
+  flip: false,
+  dx: 0,
+  dy: 0,
+  rotate: 0,
+  scale: 1,
+  hueShift: 0,
+  gradient: 0,
+};
+
+const GRADIENTS = [
+  ["0", "0", "1", "1"],
+  ["1", "0", "0", "1"],
+  ["0", "1", "1", "0"],
+  ["1", "1", "0", "0"],
+] as const;
 
 function Motif({ motif }: { motif: MotifId }) {
   const fg = "rgba(255,255,255,0.85)";
@@ -221,17 +242,104 @@ function Motif({ motif }: { motif: MotifId }) {
           ))}
         </g>
       );
+    case "door":
+      return (
+        <g>
+          <rect x={40} y={18} width={40} height={58} rx={3} fill={dim} />
+          <path d={`M44 76 V24 H72 V76`} stroke={fg} strokeWidth={1.4} fill="none" />
+          <path d={`M72 24 L88 18 V70 L72 76 Z`} fill={soft} />
+          <circle cx={66} cy={52} r={2} fill={fg} />
+          <path d={`M20 78 H100`} stroke={fg} strokeWidth={1.2} strokeLinecap="round" />
+        </g>
+      );
+    case "bridge":
+      return (
+        <g>
+          <path d={`M14 58 Q60 18 106 58`} stroke={fg} strokeWidth={1.6} fill="none" />
+          <path d={`M14 64 Q60 28 106 64`} stroke={soft} strokeWidth={1.2} fill="none" />
+          {[30, 60, 90].map((x) => (
+            <path key={x} d={`M${x} ${x === 60 ? 30 : 44} V68`} stroke={dim} strokeWidth={1.2} />
+          ))}
+          <path d={`M6 72 H114`} stroke={soft} strokeWidth={1.2} />
+          <circle cx={60} cy={22} r={4} fill={fg} />
+        </g>
+      );
+    case "compass":
+      return (
+        <g>
+          <circle cx={60} cy={45} r={28} fill={dim} />
+          <circle cx={60} cy={45} r={28} fill="none" stroke={fg} strokeWidth={1.4} />
+          <path d={`M60 17 V24 M60 66 V73 M32 45 H39 M81 45 H88`} stroke={fg} strokeWidth={1.2} />
+          <path d={`M60 45 L74 28 L64 45 Z`} fill={fg} />
+          <path d={`M60 45 L46 62 L56 45 Z`} fill={soft} />
+          <circle cx={60} cy={45} r={3} fill={fg} />
+        </g>
+      );
+    case "seed":
+      return (
+        <g>
+          <ellipse cx={60} cy={66} rx={16} ry={8} fill={dim} />
+          <path d={`M60 66 V40`} stroke={fg} strokeWidth={1.6} strokeLinecap="round" />
+          <path d={`M60 48 Q42 44 38 30 Q56 30 60 48`} fill={soft} />
+          <path d={`M60 42 Q78 38 82 24 Q64 24 60 42`} fill={fg} />
+          <path d={`M28 76 H92`} stroke={soft} strokeWidth={1.2} strokeLinecap="round" />
+        </g>
+      );
+    case "moon":
+      return (
+        <g>
+          <path d={`M74 22 A22 22 0 1 0 84 54 A18 18 0 1 1 74 22 Z`} fill={soft} />
+          {[
+            [30, 24, 1.5],
+            [46, 16, 1.1],
+            [92, 44, 1.3],
+            [36, 52, 1],
+          ].map(([x, y, r], i) => (
+            <circle key={i} cx={x} cy={y} r={r} fill={i % 2 ? dim : fg} />
+          ))}
+          <path d={`M14 70 Q34 62 54 70 T100 68`} stroke={dim} strokeWidth={1.3} fill="none" />
+        </g>
+      );
+    case "thread":
+      return (
+        <g>
+          <circle cx={58} cy={46} r={22} fill={dim} />
+          <path
+            d={`M36 40 Q58 28 80 40 M38 52 Q58 64 78 52 M46 30 Q70 44 46 60 M70 30 Q48 44 70 60`}
+            stroke={soft}
+            strokeWidth={1.3}
+            fill="none"
+          />
+          <path d={`M80 40 L104 22`} stroke={fg} strokeWidth={1.2} />
+          <circle cx={106} cy={20} r={2.5} fill="none" stroke={fg} strokeWidth={1.2} />
+        </g>
+      );
   }
 }
 
 interface ImageTileProps {
   image: PortraitImage;
+  /** Display-only variation; never changes the image's six-dim vector. */
+  variant?: PortraitVariant;
   selected?: boolean;
   onClick?: () => void;
 }
 
-export function ImageTile({ image, selected, onClick }: ImageTileProps) {
+export function ImageTile({
+  image,
+  variant = DEFAULT_VARIANT,
+  selected,
+  onClick,
+}: ImageTileProps) {
   const gradientId = useId();
+  const [x1, y1, x2, y2] = GRADIENTS[variant.gradient];
+  const motifTransform = [
+    `translate(${W / 2} ${H / 2})`,
+    `rotate(${variant.rotate})`,
+    `scale(${(variant.flip ? -1 : 1) * variant.scale} ${variant.scale})`,
+    `translate(${-W / 2 + variant.dx} ${-H / 2 + variant.dy})`,
+  ].join(" ");
+
   return (
     <button
       type="button"
@@ -243,13 +351,20 @@ export function ImageTile({ image, selected, onClick }: ImageTileProps) {
     >
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" aria-hidden="true">
         <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gradientId} x1={x1} y1={y1} x2={x2} y2={y2}>
             <stop offset="0" stopColor={image.hue[0]} />
             <stop offset="1" stopColor={image.hue[1]} />
           </linearGradient>
         </defs>
-        <rect width={W} height={H} fill={`url(#${gradientId})`} />
-        <Motif motif={image.motif} />
+        <rect
+          width={W}
+          height={H}
+          fill={`url(#${gradientId})`}
+          style={{ filter: `hue-rotate(${variant.hueShift}deg)` }}
+        />
+        <g transform={motifTransform}>
+          <Motif motif={image.motif} />
+        </g>
       </svg>
       {selected ? (
         <span className="portrait-tile-check" aria-hidden="true">

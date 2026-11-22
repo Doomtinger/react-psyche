@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "antd";
 import { useToast } from "@/shared/components/Toast";
 import { useReducedMotion } from "@/shared/utils/useReducedMotion";
-import { DIMENSIONS, PICK_COUNT, PORTRAIT_IMAGES } from "../portraitData";
+import {
+  buildPortraitDeck,
+  createPortraitSeed,
+  DIMENSIONS,
+  PICK_COUNT,
+} from "../portraitData";
 import { computePortrait } from "../portraitEngine";
 import { ImageTile } from "./ImageTile";
 import { PortraitRadar } from "./PortraitRadar";
@@ -28,6 +33,10 @@ export function PortraitWizard() {
 
   const [stage, setStage] = useState<Stage>("pick");
   const [selected, setSelected] = useState<string[]>([]);
+  // Fixed seed for SSR/hydration; a fresh one is picked on mount so every
+  // visit shows a different arrangement without a hydration mismatch.
+  const [seed, setSeed] = useState(0);
+  const deck = useMemo(() => buildPortraitDeck(seed), [seed]);
 
   // 结果在进入 result 屏时基于当时的选中集合计算一次。
   const [snapshot, setSnapshot] = useState<string[] | null>(null);
@@ -35,6 +44,10 @@ export function PortraitWizard() {
     () => (snapshot ? computePortrait(snapshot) : null),
     [snapshot]
   );
+
+  useEffect(() => {
+    setSeed(createPortraitSeed());
+  }, []);
 
   useEffect(() => {
     if (stage !== "generating") return;
@@ -58,6 +71,7 @@ export function PortraitWizard() {
   function restart() {
     setSelected([]);
     setSnapshot(null);
+    setSeed(createPortraitSeed());
     setStage("pick");
   }
 
@@ -89,16 +103,17 @@ export function PortraitWizard() {
         </header>
 
         <p className="portrait-hint">
-          从下面的图里选出 {PICK_COUNT} 张「让自己多看一眼的」。没有对错，凭直觉。
+          从下面的图里选出 {PICK_COUNT} 张「让自己多看一眼的」。没有对错，凭直觉。每次进来都会从更大的图库里换一批不同的图。
         </p>
 
         <div className="portrait-grid">
-          {PORTRAIT_IMAGES.map((img) => (
+          {deck.map(({ image, variant }) => (
             <ImageTile
-              key={img.id}
-              image={img}
-              selected={selected.includes(img.id)}
-              onClick={() => toggle(img.id)}
+              key={image.id}
+              image={image}
+              variant={variant}
+              selected={selected.includes(image.id)}
+              onClick={() => toggle(image.id)}
             />
           ))}
         </div>

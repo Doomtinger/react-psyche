@@ -117,7 +117,13 @@ export type MotifId =
   | "clouds"
   | "campfire"
   | "lights"
-  | "bubbles";
+  | "bubbles"
+  | "door"
+  | "bridge"
+  | "compass"
+  | "seed"
+  | "moon"
+  | "thread";
 
 export interface PortraitImage {
   id: string;
@@ -262,8 +268,196 @@ export const PORTRAIT_IMAGES: PortraitImage[] = [
     label: "对话气泡",
     vector: { explore: 0.2, empathy: 0.6, order: 0.3, action: 0.35, imagination: 0.35, social: 0.85 },
   },
+  // —— 新增图形：每个维度都有更多不同的画面可供抽到 ——
+  {
+    id: "img_door",
+    motif: "door",
+    hue: ["#7a6a3a", "#241d12"],
+    label: "半开的门",
+    vector: { explore: 0.8, empathy: 0.25, order: 0.2, action: 0.55, imagination: 0.45, social: 0.15 },
+  },
+  {
+    id: "img_compass",
+    motif: "compass",
+    hue: ["#3a6a7a", "#14252c"],
+    label: "转动的指针",
+    vector: { explore: 0.75, empathy: 0.15, order: 0.45, action: 0.5, imagination: 0.35, social: 0.1 },
+  },
+  {
+    id: "img_north",
+    motif: "compass",
+    hue: ["#6a8f8f", "#1a2a2a"],
+    label: "向北的路",
+    vector: { explore: 0.8, empathy: 0.2, order: 0.35, action: 0.45, imagination: 0.3, social: 0.1 },
+  },
+  {
+    id: "img_bridge",
+    motif: "bridge",
+    hue: ["#8f6a7a", "#2e1e26"],
+    label: "连接两岸",
+    vector: { explore: 0.35, empathy: 0.8, order: 0.3, action: 0.3, imagination: 0.35, social: 0.65 },
+  },
+  {
+    id: "img_moon",
+    motif: "moon",
+    hue: ["#5a6a9f", "#1a1f33"],
+    label: "窗外的月",
+    vector: { explore: 0.3, empathy: 0.7, order: 0.2, action: 0.15, imagination: 0.6, social: 0.25 },
+  },
+  {
+    id: "img_dial",
+    motif: "compass",
+    hue: ["#4a5f6a", "#16212a"],
+    label: "刻度罗盘",
+    vector: { explore: 0.25, empathy: 0.1, order: 0.8, action: 0.4, imagination: 0.3, social: 0.1 },
+  },
+  {
+    id: "img_thread",
+    motif: "thread",
+    hue: ["#7a6a9f", "#241e2e"],
+    label: "缠绕的线",
+    vector: { explore: 0.3, empathy: 0.35, order: 0.75, action: 0.25, imagination: 0.45, social: 0.3 },
+  },
+  {
+    id: "img_open_door",
+    motif: "door",
+    hue: ["#9f6a4a", "#2e1c12"],
+    label: "推开的门",
+    vector: { explore: 0.4, empathy: 0.3, order: 0.25, action: 0.8, imagination: 0.35, social: 0.4 },
+  },
+  {
+    id: "img_sprout",
+    motif: "seed",
+    hue: ["#5a8f5a", "#1a2a1a"],
+    label: "破土的芽",
+    vector: { explore: 0.4, empathy: 0.25, order: 0.3, action: 0.8, imagination: 0.4, social: 0.2 },
+  },
+  {
+    id: "img_seed",
+    motif: "seed",
+    hue: ["#7a8f6a", "#222a1a"],
+    label: "种子的形状",
+    vector: { explore: 0.35, empathy: 0.3, order: 0.2, action: 0.35, imagination: 0.8, social: 0.15 },
+  },
+  {
+    id: "img_crescent",
+    motif: "moon",
+    hue: ["#8a7abf", "#241e33"],
+    label: "弯月与星",
+    vector: { explore: 0.45, empathy: 0.35, order: 0.15, action: 0.2, imagination: 0.85, social: 0.2 },
+  },
+  {
+    id: "img_lit_bridge",
+    motif: "bridge",
+    hue: ["#9f7a4a", "#2e2412"],
+    label: "灯下的桥",
+    vector: { explore: 0.3, empathy: 0.55, order: 0.3, action: 0.4, imagination: 0.3, social: 0.85 },
+  },
+  {
+    id: "img_weave",
+    motif: "thread",
+    hue: ["#6a8f9f", "#1a262e"],
+    label: "交织的线",
+    vector: { explore: 0.25, empathy: 0.6, order: 0.4, action: 0.35, imagination: 0.35, social: 0.75 },
+  },
 ];
 
 export const PICK_COUNT = 6;
-/** 结果页展示的图卡数量。 */
-export const PICK_POOL_SIZE = PORTRAIT_IMAGES.length;
+/** 每次进入展示的图卡数量：从更大的图库按维度分层抽取。 */
+export const PICK_POOL_SIZE = 18;
+const PICKS_PER_DIM = 3;
+
+/**
+ * Deterministic visual variation applied to one card at display time.
+ * It changes only how the card looks — never its id, label or six-dim vector.
+ */
+export interface PortraitVariant {
+  /** Mirror the motif horizontally. */
+  flip: boolean;
+  /** Slight composition offset/rotation around the card centre. */
+  dx: number;
+  dy: number;
+  rotate: number;
+  scale: number;
+  /** Hue rotation in degrees, applied to the gradient background only. */
+  hueShift: number;
+  /** Gradient direction, 0..3. */
+  gradient: 0 | 1 | 2 | 3;
+}
+
+export interface PortraitDeckCard {
+  image: PortraitImage;
+  variant: PortraitVariant;
+}
+
+/** Small deterministic PRNG: the same seed always reproduces the same deck. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A fresh seed per visit. The deck stays fixed while the page is open. */
+export function createPortraitSeed(): number {
+  const random =
+    typeof crypto !== "undefined" &&
+    typeof crypto.getRandomValues === "function"
+      ? crypto.getRandomValues(new Uint32Array(1))[0]
+      : Math.floor(Math.random() * 0xffffffff);
+  return (Date.now() ^ random) >>> 0;
+}
+
+/**
+ * Shuffle the gallery and give every motif a composition/tone variant.
+ * The image objects themselves are reused unchanged, so `computePortrait`
+ * produces exactly the same result for a given selection regardless of seed.
+ */
+/** The dimension a card most strongly represents, used for stratified draws. */
+function primaryDimension(image: PortraitImage): DimensionId {
+  return DIMENSION_IDS.reduce(
+    (best, id) => (image.vector[id] > image.vector[best] ? id : best),
+    DIMENSION_IDS[0]
+  );
+}
+
+export function buildPortraitDeck(seed: number): PortraitDeckCard[] {
+  const rand = mulberry32(seed);
+  const makeCard = (image: PortraitImage): PortraitDeckCard => ({
+    image,
+    variant: {
+      flip: rand() < 0.5,
+      dx: Math.round((rand() - 0.5) * 10),
+      dy: Math.round((rand() - 0.5) * 8),
+      rotate: Math.round((rand() - 0.5) * 8),
+      scale: 0.94 + rand() * 0.12,
+      hueShift: Math.round((rand() - 0.5) * 36),
+      gradient: Math.floor(rand() * 4) as 0 | 1 | 2 | 3,
+    },
+  });
+  const shuffle = <T,>(items: T[]): T[] => {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  };
+
+  const cards: PortraitDeckCard[] = [];
+  // Draw from a pool larger than the visible deck: successive visits contain
+  // different pictures, not just the same ones in a different order. Keep the
+  // six dimensions balanced so a missing dimension cannot skew the portrait.
+  for (const dim of DIMENSION_IDS) {
+    const pool = shuffle(
+      PORTRAIT_IMAGES.filter((image) => primaryDimension(image) === dim)
+    );
+    for (const image of pool.slice(0, PICKS_PER_DIM)) {
+      cards.push(makeCard(image));
+    }
+  }
+  return shuffle(cards);
+}
